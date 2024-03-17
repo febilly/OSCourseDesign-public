@@ -1,0 +1,29 @@
+from dataclasses import dataclass
+import struct
+
+@dataclass
+class SuperBlock:
+    s_isize: int
+    s_fsize: int
+    
+    s_nfree: int
+    s_free: list[int]
+    s_flock: int
+    
+    s_ninode: int
+    s_inode: list[int]
+    s_ilock: int
+    
+    s_fmod: int
+    s_ronly: int
+    s_time: int
+    padding: list[int]
+
+    @classmethod
+    def from_bytes(cls, b: bytes):
+        return cls(*struct.unpack('1i1i 1i100i1i 1i100i1i 1i1i1i47i', b))
+    
+    def to_bytes(self):
+        return struct.pack('1i1i 1i100i1i 1i100i1i 1i1i1i47i', *self)
+    
+    
