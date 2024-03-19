@@ -28,13 +28,29 @@ class LazyArray(Generic[ItemType]):
             yield self[i]
 
 
-class BlockTool:
+class FileSystemObjectInterface:
     """
     提供访问数据结构的接口，向已经实现缓存了的磁盘发出读写指令
+    只要读取此对象的属性，即可访问磁盘中对应的对象
+    修改此对象的属性，则会自动将更改写回磁盘
     """
     def __init__(self, block_device: CachedBlockDevice):
         self.block_device = block_device
     
+    # 给下面读写数据块用的工厂方法
+    def _create_lazy_array(self, parser, builder, item_type) -> LazyArray:
+        def getter(index):
+            block_index = DATA_START + index
+            block_bytes = self.block_device.read_block(block_index)
+            return parser(block_bytes)
+
+        def setter(index, value) -> None:
+            block_index = DATA_START + index
+            block_bytes = builder(value)
+            self.block_device.write_block(block_index, block_bytes)
+
+        return LazyArray[item_type](DATA_BLOCK_LENGTH, getter, setter)
+
     # 超级块的读写接口
     @property
     def super_block(self) -> Container:
@@ -71,27 +87,26 @@ class BlockTool:
     # 文件数据块
     @property
     def file_blocks(self) -> LazyArray[bytes]:
-        def getter(index) -> bytes:
-            return self.block_device.read_block(index)
-        
-        def setter(index, value: bytes) -> None:
-            self.block_device.write_block(index, value)
-        
-        return LazyArray[bytes](DATA_START, getter, setter)
-    
+        return self._create_lazy_array(lambda x: x, lambda x: x, bytes)
+   
     # 目录数据块
     @property
     def dir_blocks(self) -> LazyArray[list[Container]]:
-        def getter(index) -> list[Container]:
-            block_index = DATA_START + index
-            block_bytes = self.block_device.read_block(block_index)
-            return DirectoryBlockStruct.parse(block_bytes)
-        
-        def setter(index, value: list[Container]) -> None:
-            block_index = DATA_START + index
-            block_bytes = DirectoryBlockStruct.build(value)
-            self.block_device.write_block(block_index, block_bytes)
-        
-        return LazyArray[list[Container]](DATA_START, getter, setter)
-    
+        parser = DirectoryBlockStruct.parse
+        builder = DirectoryBlockStruct.build
+        return self._create_lazy_array(parser, builder, list[Container])
+
     # 文件索引块
+    @property
+    def file_index_blocks(self) -> LazyArray[list[int]]:
+        parser = FileIndexBlock.parse
+        builder = FileIndexBlock.build
+        return self._create_lazy_array(parser, builder, list[int])
+    
+    # 空白块索引块
+    @property
+    def free_blocks(self) -> LazyArray[Container]:
+        parser = FreeBlockIndexBlock.parse
+        builder = FreeBlockIndexBlock.build
+        return self._create_lazy_array(parser, builder, Container)
+    
