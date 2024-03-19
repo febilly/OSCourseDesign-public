@@ -3,6 +3,7 @@ from typing import Callable
 from structures import *
 from enum import Enum
 from utils import *
+import globals
 
 class FILE_TYPE(Enum):
     FILE = 0
@@ -11,7 +12,7 @@ class FILE_TYPE(Enum):
     DEVICE = 3
 
 class Inode:
-    def __init__(self, read_block: Callable[[int], bytes], write_block: Callable[[int, bytes], None]):
+    def __init__(self):
         self.d_mode = None
         self.d_nlink = None
         self.d_uid = None
