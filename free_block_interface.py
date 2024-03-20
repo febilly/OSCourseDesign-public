@@ -5,11 +5,11 @@ from abc import ABC, abstractmethod
 
 class FreeBlockInterface(ABC):
     @abstractmethod
-    def allocate(self) -> int:
+    def allocate(self, zero=False) -> int:
         pass
     
-    def allocate_n(self, n: int) -> list[int]:
-        return [self.allocate() for _ in range(n)]
+    def allocate_n(self, n: int, zero=False) -> list[int]:
+        return [self.allocate(zero) for _ in range(n)]
 
     @abstractmethod
     def deallocate(self, block_index: int) -> None:

@@ -11,10 +11,6 @@ class IndexBlock:
         self.index = index
         self.indexes = indexes
         self.object_accessor = object_accessor
-        if 0 in self.indexes:
-            self.pointer = self.indexes.index(0)
-        else:
-            self.pointer = FILE_INDEX_PER_BLOCK
 
     @classmethod
     def from_index(cls, index: int, object_accessor: ObjectAccessor):
@@ -44,8 +40,5 @@ class IndexBlock:
     def to_list(self) -> list[int]:
         return self.indexes.copy()
     
-    def is_full(self) -> bool:
-        return self.pointer == FILE_INDEX_PER_BLOCK
-    
-    def is_empty(self) -> bool:
-        return self.pointer == 0
+    def subblock(self, index: int) -> 'IndexBlock':
+        return IndexBlock.from_index(self[index], self.object_accessor)
