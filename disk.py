@@ -10,7 +10,7 @@ class Disk:
         globals.block_device = BlockDevice(path)
         
     def mount(self):
-        self.super_block = self._read_super_block()
+        self.superblock = self._read_superblock()
         
     def unmount(self):
         pass
@@ -18,13 +18,13 @@ class Disk:
     def format(self):
         pass
         
-    def _read_super_block(self) -> Container:
+    def _read_superblock(self) -> Container:
         return SuperBlockStruct.parse(globals.block_device.read_block_full(0) + globals.block_device.read_block_full(1))
     
     @property
     def inode_size(self) -> int:
-        return self.super_block.s_isize
+        return self.superblock.s_isize
     
     @property
     def block_size(self) -> int:
-        return self.super_block.s_fsize
+        return self.superblock.s_fsize

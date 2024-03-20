@@ -28,9 +28,10 @@ class LazyArray(Generic[ItemType]):
             yield self[i]
 
 
-class FileSystemObjectInterface:
+class ObjectAccessor:
     """
     提供访问数据结构的接口，向已经实现缓存了的磁盘发出读写指令
+    只负责单个对象的读写，不考虑多个对象之间的联系
     只要读取此对象的属性，即可访问磁盘中对应的对象
     修改此对象的属性，则会自动将更改写回磁盘
     """
@@ -49,15 +50,15 @@ class FileSystemObjectInterface:
             block_bytes = builder(value)
             self.block_device.write_block(block_index, block_bytes)
 
-        return LazyArray[item_type](DATA_BLOCK_LENGTH, getter, setter)
+        return LazyArray[item_type](DATA_BLOCK_COUNT, getter, setter)
 
     # 超级块的读写接口
     @property
-    def super_block(self) -> Container:
+    def superblock(self) -> Container:
         return SuperBlockStruct.parse(self.block_device.read_block_range(0, 2))
     
-    @super_block.setter
-    def super_block(self, value: Container):
+    @superblock.setter
+    def superblock(self, value: Container):
         self.block_device.write_block_range(0, SuperBlockStruct.build(value))
     
     # inode的读写接口
@@ -81,7 +82,7 @@ class FileSystemObjectInterface:
             block_bytes = InodeBlockStruct.build(inode_block)
             self.block_device.write_block(block_index, block_bytes)
             
-        return LazyArray[Container](INODE_LENGTH, getter, setter)
+        return LazyArray[Container](INODE_COUNT, getter, setter)
     
     # 数据块分为文件数据块、目录数据块、文件索引块，以及空白块索引块
     # 文件数据块
