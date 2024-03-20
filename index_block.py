@@ -49,28 +49,3 @@ class IndexBlock:
     
     def is_empty(self) -> bool:
         return self.pointer == 0
-    
-    def append(self, block_index: int) -> None:
-        assert not self.is_full()
-        self.indexes[self.pointer] = block_index
-        self.pointer += 1
-        self.flush()
-        
-    def try_append(self, block_index: int) -> bool:
-        if self.is_full():
-            return False
-        self.append(block_index)
-        return True
-    
-    def pop(self) -> int:
-        assert not self.is_empty()
-        self.pointer -= 1
-        result = self.indexes[self.pointer]
-        self.indexes[self.pointer] = 0
-        self.flush()
-        return result
-    
-    def try_pop(self) -> int:
-        if self.is_empty():
-            return 0
-        return self.pop()
