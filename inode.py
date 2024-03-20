@@ -5,6 +5,7 @@ from constants import *
 from enum import Enum
 from object_accessor import ObjectAccessor
 from free_block_interface import FreeBlockInterface
+from index_block import IndexBlock
 from math import ceil
 
 class FILE_TYPE(Enum):
@@ -34,12 +35,20 @@ class Inode:
         inode_data: Container[Any] = object_accessor.inodes[inode_number]
         return cls(inode_data, object_accessor, free_block_manager)
     
+    def get_index_block(self, block_index: int) -> IndexBlock:
+        """
+        获取一个索引块
+        """
+        return IndexBlock.from_index(block_index, self.object_accessor)
     
     def get_indexes(self, block_index: int) -> list[int]:
         """
         获取一个索引块的索引列表
         """
-        return self.object_accessor.file_index_blocks[block_index]
+        list = self.get_index_block(block_index).to_list()
+        while list[-1] == 0:
+            list.pop()
+        return list
     
     def get_file_blocks_list(self) -> list[int]:
         """
@@ -92,16 +101,31 @@ class Inode:
             self.data.d_addr[length] = index
         elif length < FILE_INDEX_LARGE_THRESHOLD:
             if (length - FILE_INDEX_SMALL_THRESHOLD) % FILE_INDEX_PER_BLOCK == 0:
-                # 刚写满上一个索引，现在应该增加一个一次间接索引块
+                # 刚写满上一个直接索引，现在应该增加一个一次间接索引块
                 # 增加一个一次间接索引块，然后把第一项设置为index
-                new_index = self._create_index_block()
-                self.get_indexes(new_index)[0] = index
-                self.data.d_addr[length] = new_index
+                new_index_1 = self._create_index_block()
+                self.get_index_block(new_index_1)[0] = index
+                self.set_indexes(new_index_1, [0] * FILE_INDEX_PER_BLOCK)
+                self.data.d_addr[length] = new_index_1
             else:
                 # 直接加进一次间接索引块
                 index_0 = (length - FILE_INDEX_SMALL_THRESHOLD) // FILE_INDEX_PER_BLOCK
                 index_1 = (length - FILE_INDEX_SMALL_THRESHOLD) % FILE_INDEX_PER_BLOCK
-                self.get_indexes(self.data.d_addr[index_0])[index_1] = index
+                self.get_index_block(self.data.d_addr[index_0])[index_1] = index
+        else:
+            if (length - FILE_INDEX_LARGE_THRESHOLD) % FILE_INDEX_PER_BLOCK == 0:
+                # 刚写满上一个直接索引，现在应该增加一个一次间接索引块+一个二次间接索引块
+                # 增加一个二次间接索引块，然后把第一项设置为index
+                new_index_2 = self._create_index_block()
+                self.get_index_block(new_index_2)[0] = index
+                # 增加一个一次间接索引块，然后把第一项设置为new_index_2
+                new_index_1 = self._create_index_block()
+                self.get_index_block(new_index_1)[0] = new_index_2
+            else:
+                # 直接加进二次间接索引块
+                index_0 = (length - FILE_INDEX_LARGE_THRESHOLD) // FILE_INDEX_PER_BLOCK
+                index_1 = (length - FILE_INDEX_LARGE_THRESHOLD) % FILE_INDEX_PER_BLOCK
+                self.get_index_block(self.data.d_addr[index_0])[index_1] = index
     
     
     def set_file_blocks_list(self, index_list: list[int]) -> None:

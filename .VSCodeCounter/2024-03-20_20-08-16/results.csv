@@ -1,0 +1,15 @@
+"filename", "language", "Python", "comment", "blank", "total"
+"/Users/mac/Documents/OSCourseDesign/block_device.py", "Python", 117, 0, 27, 144
+"/Users/mac/Documents/OSCourseDesign/constants.py", "Python", 32, 9, 8, 49
+"/Users/mac/Documents/OSCourseDesign/disk.py", "Python", 22, 0, 8, 30
+"/Users/mac/Documents/OSCourseDesign/free_block_interface.py", "Python", 16, 0, 5, 21
+"/Users/mac/Documents/OSCourseDesign/globals.py", "Python", 1, 0, 1, 2
+"/Users/mac/Documents/OSCourseDesign/index_block.py", "Python", 39, 0, 7, 46
+"/Users/mac/Documents/OSCourseDesign/inode.py", "Python", 107, 12, 16, 135
+"/Users/mac/Documents/OSCourseDesign/object_accessor.py", "Python", 90, 8, 23, 121
+"/Users/mac/Documents/OSCourseDesign/structures.py", "Python", 80, 8, 17, 105
+"/Users/mac/Documents/OSCourseDesign/superblock.py", "Python", 13, 0, 5, 18
+"/Users/mac/Documents/OSCourseDesign/test.py", "Python", 13, 1, 4, 18
+"/Users/mac/Documents/OSCourseDesign/utils.py", "Python", 3, 0, 1, 4
+"/Users/mac/Documents/OSCourseDesign/xmp.py", "Python", 163, 69, 68, 300
+"Total", "-", 696, 107, 190, 993

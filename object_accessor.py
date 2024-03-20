@@ -64,6 +64,14 @@ class ObjectAccessor:
     # inode的读写接口
     @property
     def inodes(self) -> LazyArray[Container]:
+        """
+        inode的读写接口。
+        这个inodes本身是一个定长的数组，不能直接被修改，
+        但是我们可以对inodes里面的元素进行访问和修改，
+        所做的修改会自动保存至磁盘。
+        注意：如果这个LazyArray的元素是一个列表，那修改这个元素列表并不会被保存，
+        需要直接替换那个列表才行。
+        """
         def getter(index) -> Container:
             block_index = INODE_START + index // INODE_PER_BLOCK
             inode_index = index % INODE_PER_BLOCK
