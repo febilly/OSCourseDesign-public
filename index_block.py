@@ -7,9 +7,14 @@ from object_accessor import ObjectAccessor
 from free_block_interface import FreeBlockInterface
 
 class IndexBlock:
-    def __init__(self, indexes: list[int], writer: Callable[[list[int]], None]):
+    def __init__(self, index: int, indexes: list[int], object_accessor: ObjectAccessor):
+        self.index = index
         self.indexes = indexes
-        self.writer = writer
+        self.object_accessor = object_accessor
+        if 0 in self.indexes:
+            self.pointer = self.indexes.index(0)
+        else:
+            self.pointer = FILE_INDEX_PER_BLOCK
 
     @classmethod
     def from_index(cls, index: int, object_accessor: ObjectAccessor):
@@ -17,29 +22,55 @@ class IndexBlock:
         通过块号构造索引对象
         """
         index_data = object_accessor.file_index_blocks[index]
-        def writer(data: list[int]):
-            object_accessor.file_index_blocks[index] = data
-        return cls(index_data, writer)
+        return cls(index, index_data, object_accessor)
     
     @classmethod
     def new(cls, index: int, object_accessor: ObjectAccessor):
         """
         创建一个新的索引块
         """
-        def writer(data: list[int]):
-            object_accessor.file_index_blocks[index] = data
-        return cls([0] * FILE_INDEX_PER_BLOCK, writer)
+        return cls(index, [0] * FILE_INDEX_PER_BLOCK, object_accessor)
     
-    def flush(self) -> None:
-        self.writer(self.indexes)
-        
     def __getitem__(self, index: int) -> int:
         return self.indexes[index]
 
     def __setitem__(self, index: int, value: int) -> None:
         self.indexes[index] = value
         self.flush()
-        
+
+    def flush(self) -> None:
+        self.object_accessor.file_index_blocks[self.index] = self.indexes        
+ 
     def to_list(self) -> list[int]:
-        return self.indexes
+        return self.indexes.copy()
     
+    def is_full(self) -> bool:
+        return self.pointer == FILE_INDEX_PER_BLOCK
+    
+    def is_empty(self) -> bool:
+        return self.pointer == 0
+    
+    def append(self, block_index: int) -> None:
+        assert not self.is_full()
+        self.indexes[self.pointer] = block_index
+        self.pointer += 1
+        self.flush()
+        
+    def try_append(self, block_index: int) -> bool:
+        if self.is_full():
+            return False
+        self.append(block_index)
+        return True
+    
+    def pop(self) -> int:
+        assert not self.is_empty()
+        self.pointer -= 1
+        result = self.indexes[self.pointer]
+        self.indexes[self.pointer] = 0
+        self.flush()
+        return result
+    
+    def try_pop(self) -> int:
+        if self.is_empty():
+            return 0
+        return self.pop()
