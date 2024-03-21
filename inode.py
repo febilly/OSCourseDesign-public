@@ -93,55 +93,6 @@ class Inode:
     def delete_index(self, index: int) -> None:
         self.free_block_manager.deallocate(index)
     
-    
-    def _add_to_small(self, block_count, index) -> bool:
-        if not block_count < FILE_INDEX_SMALL_THRESHOLD:
-            return False
-        self.data.d_addr[block_count] = index
-        return True
-    
-    def _add_to_large(self, block_count, index) -> bool:
-        if not FILE_INDEX_SMALL_THRESHOLD <= block_count < FILE_INDEX_LARGE_THRESHOLD:
-            return False
-        
-        index_big = block_count - FILE_INDEX_SMALL_THRESHOLD
-        index_1 = index_big // FILE_INDEX_PER_BLOCK
-        index_0 = index_big % FILE_INDEX_PER_BLOCK
-
-        # 是否应新增一级索引块
-        if index_0 == 0:
-            self.data.d_addr[index_1] = self.new_block_index()
-        
-        # 在计算出的位置设置索引
-        index_block = self.get_self_block(index_1)
-        index_block[index_0] = index
-        
-        return True
-            
-    def _add_to_huge(self, block_count, index) -> bool:
-        if not FILE_INDEX_LARGE_THRESHOLD <= block_count < FILE_INDEX_HUGE_THRESHOLD
-            return False
-
-        index_huge = block_count - FILE_INDEX_LARGE_THRESHOLD
-        index_2 = index_huge // (FILE_INDEX_PER_BLOCK ** 2)
-        index_1 = (index_huge % (FILE_INDEX_PER_BLOCK ** 2)) // FILE_INDEX_PER_BLOCK
-        index_0 = index_huge % FILE_INDEX_PER_BLOCK
-        
-        # 是否应新增二级索引块
-        if index_1 == 0 and index_0 == 0:
-            self.data.d_addr[index_2] = self.new_block_index()
-        # 是否应新增一级索引块
-        if index_0 == 0:
-            index_block_1 = self.get_self_block(index_2)
-            index_block_1[index_1] = self.new_block_index()
-        
-        # 在计算出的位置设置索引
-        index_block_2 = self.get_self_block(index_2)
-        index_block_1 = index_block_2.subblock(index_1)
-        index_block_1[index_0] = index
-        
-        return True
-
     def add_index(self, index) -> None:
         """
         向索引列表中添加一个新的索引
