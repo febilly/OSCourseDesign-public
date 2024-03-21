@@ -40,6 +40,16 @@ class Inode:
         inode_data: Container[Any] = object_accessor.inodes[index]
         return cls(index, inode_data, object_accessor, free_block_manager)
     
+    @classmethod
+    def find_empty_inode_index(cls, object_accessor: ObjectAccessor) -> int:
+        """
+        找到一个空闲的Inode号码
+        """
+        for index in range(INODE_COUNT):
+            if not object_accessor.inodes[index].d_mode.IALLOC:
+                return index
+        raise Exception("No empty inode")
+    
     def flush(self) -> None:
         self.object_accessor.inodes[self.index] = self.data
     
@@ -87,10 +97,10 @@ class Inode:
         return result
     
     def new_data_block_index(self) -> int:
-        return self.free_block_manager.allocate(zero=True)
+        return self.free_block_manager.allocate_block(zero=True)
 
     def delete_data_block(self, index: int) -> None:
-        self.free_block_manager.deallocate(index)
+        self.free_block_manager.release_block(index)
     
     def push_index(self, index) -> None:
         """

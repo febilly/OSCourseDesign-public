@@ -9,7 +9,7 @@ class Superblock(FreeBlockInterface):
         self.data = data
         self.object_accessor = object_accessor
     
-    def allocate(self, zero=False) -> int:
+    def allocate_block(self, zero=False) -> int:
         self.data.s_nfree -= 1
         index = self.data.s_free[self.data.s_nfree]
         
@@ -26,7 +26,7 @@ class Superblock(FreeBlockInterface):
             
         return index
 
-    def deallocate(self, block_index: int) -> None:
+    def release_block(self, block_index: int) -> None:
         if self.data.s_nfree < FREE_INDEX_PER_BLOCK:
             self.data.s_free[self.data.s_nfree] = block_index
             self.data.s_nfree += 1
@@ -38,3 +38,26 @@ class Superblock(FreeBlockInterface):
             self.data.s_nfree = 1
             self.data.s_free = [0] * FREE_INDEX_PER_BLOCK
             self.data.s_free[0] = new_block.data_block_index
+    
+    def _fill_inode(self) -> None:
+        assert self.data.s_ninode == 0
+        for index in range(INODE_COUNT):
+            if self.object_accessor.inodes[index].d_mode.IALLOC:
+                continue
+            self.data.s_inode[index] = index
+            self.data.s_ninode += 1
+            if self.data.s_ninode == INODE_PER_BLOCK:
+                break
+                
+    def allocate_inode(self) -> int:
+        self.data.s_ninode -= 1
+        index = self.data.s_inode[self.data.s_ninode]
+    
+        # 如果用完了缓存的空白inode表，就一次性把它填充满
+        if self.data.s_ninode == 0:
+            self._fill_inode()
+            
+        return index
+    
+    def release_inode(self, inode_index: int) -> None:
+        
