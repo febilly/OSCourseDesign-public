@@ -15,14 +15,7 @@ class FileIndexBlock:
         """
         index_data = object_accessor.file_index_blocks[index]
         return cls(index, index_data, object_accessor)
-    
-    @classmethod
-    def new(cls, index: int, object_accessor: ObjectAccessor):
-        """
-        创建一个新的索引块
-        """
-        return cls(index, [0] * FILE_INDEX_PER_BLOCK, object_accessor)
-    
+        
     def __getitem__(self, index: int) -> int:
         return self.indexes[index]
 

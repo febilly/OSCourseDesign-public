@@ -114,8 +114,8 @@ class ObjectAccessor:
     
     # 空白块索引块
     @property
-    def free_index_blocks(self) -> LazyArray[list[int]]:
+    def free_index_blocks(self) -> LazyArray[Container]:
         parser = FreeBlockIndexBlock.parse
         builder = FreeBlockIndexBlock.build
-        return self._create_lazy_array(parser, builder, list[int])
+        return self._create_lazy_array(parser, builder, Container)
     
