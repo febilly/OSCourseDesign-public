@@ -51,7 +51,7 @@ class Inode:
     def get_index_block(self, block_index: int) -> FileIndexBlock:
         return FileIndexBlock.from_index(block_index, self.object_accessor)
     
-    def get_self_block(self, index: int) -> FileIndexBlock:
+    def get_s_inode_block(self, index: int) -> FileIndexBlock:
         return self.get_index_block(self.data.d_addr[index])
     
     def get_index_list(self, block_index: int) -> list[int]:
@@ -114,7 +114,7 @@ class Inode:
                 self.data.d_addr[index_1] = self.new_data_block_index()
             
             # 在计算出的位置设置索引
-            index_block = self.get_self_block(index_1)
+            index_block = self.get_s_inode_block(index_1)
             index_block[index_0] = index
             return
         
@@ -130,11 +130,11 @@ class Inode:
                 self.data.d_addr[index_2] = self.new_data_block_index()
             # 是否应新增一级索引块
             if index_0 == 0:
-                index_block_1 = self.get_self_block(index_2)
+                index_block_1 = self.get_s_inode_block(index_2)
                 index_block_1[index_1] = self.new_data_block_index()
             
             # 在计算出的位置设置索引
-            index_block_2 = self.get_self_block(index_2)
+            index_block_2 = self.get_s_inode_block(index_2)
             index_block_1 = index_block_2.subblock(index_1)
             index_block_1[index_0] = index
             return
@@ -156,7 +156,7 @@ class Inode:
             index_0 = index_big % FILE_INDEX_PER_BLOCK
             
             # 在计算出的位置清除索引
-            block_1 = self.get_self_block(index_1)
+            block_1 = self.get_s_inode_block(index_1)
             block_1[index_0] = 0
 
             # 是否应删除一级索引块
@@ -173,7 +173,7 @@ class Inode:
             index_0 = index_huge % FILE_INDEX_PER_BLOCK
             
             # 在计算出的位置清除索引
-            block_2 = self.get_self_block(index_2)
+            block_2 = self.get_s_inode_block(index_2)
             block_1 = block_2.subblock(index_1)
             block_1[index_0] = 0
             

@@ -119,3 +119,7 @@ class ObjectAccessor:
         builder = FreeBlockIndexBlock.build
         return self._create_lazy_array(parser, builder, Container)
     
+    # 清空一个数据块
+    def clear_data_block(self, block_index: int) -> None:
+        self.block_device.write_block(block_index, b'\x00' * DATA_BYTES)
+        
