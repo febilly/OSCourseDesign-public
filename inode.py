@@ -1,11 +1,10 @@
 from typing import Any
 from construct import Struct, Int32ub, Int16ub, Container
-from structures import *
 from constants import *
 from enum import Enum
 from object_accessor import ObjectAccessor
 from free_block_interface import FreeBlockInterface
-from index_block import IndexBlock
+from file_index_block import FileIndexBlock
 from math import ceil
 
 class FILE_TYPE(Enum):
@@ -49,10 +48,10 @@ class Inode:
             return self.data.d_addr.index(0)
         return len(self.data.d_addr)
     
-    def get_index_block(self, block_index: int) -> IndexBlock:
-        return IndexBlock.from_index(block_index, self.object_accessor)
+    def get_index_block(self, block_index: int) -> FileIndexBlock:
+        return FileIndexBlock.from_index(block_index, self.object_accessor)
     
-    def get_self_block(self, index: int) -> IndexBlock:
+    def get_self_block(self, index: int) -> FileIndexBlock:
         return self.get_index_block(self.data.d_addr[index])
     
     def get_index_list(self, block_index: int) -> list[int]:
@@ -87,32 +86,32 @@ class Inode:
         
         return result
     
-    def new_block_index(self) -> int:
+    def new_data_block_index(self) -> int:
         return self.free_block_manager.allocate(zero=True)
 
-    def delete_index(self, index: int) -> None:
+    def delete_data_block(self, index: int) -> None:
         self.free_block_manager.deallocate(index)
     
-    def add_index(self, index) -> None:
+    def push_index(self, index) -> None:
         """
         向索引列表中添加一个新的索引
         """
-        block_count: int = ceil(self.data.d_size / BLOCK_BYTES)
+        insert_position: int = ceil(self.data.d_size / BLOCK_BYTES)
 
         # 小型文件
-        if block_count < FILE_INDEX_SMALL_THRESHOLD:
-            self.data.d_addr[block_count] = index
+        if insert_position < FILE_INDEX_SMALL_THRESHOLD:
+            self.data.d_addr[insert_position] = index
             return
         
         # 大型文件
-        if FILE_INDEX_SMALL_THRESHOLD <= block_count < FILE_INDEX_LARGE_THRESHOLD:
-            index_big = block_count - FILE_INDEX_SMALL_THRESHOLD
+        if FILE_INDEX_SMALL_THRESHOLD <= insert_position < FILE_INDEX_LARGE_THRESHOLD:
+            index_big = insert_position - FILE_INDEX_SMALL_THRESHOLD
             index_1 = index_big // FILE_INDEX_PER_BLOCK
             index_0 = index_big % FILE_INDEX_PER_BLOCK
 
             # 是否应新增一级索引块
             if index_0 == 0:
-                self.data.d_addr[index_1] = self.new_block_index()
+                self.data.d_addr[index_1] = self.new_data_block_index()
             
             # 在计算出的位置设置索引
             index_block = self.get_self_block(index_1)
@@ -120,19 +119,19 @@ class Inode:
             return
         
         # 巨型文件
-        if FILE_INDEX_LARGE_THRESHOLD <= block_count < FILE_INDEX_HUGE_THRESHOLD:
-            index_huge = block_count - FILE_INDEX_LARGE_THRESHOLD
+        if FILE_INDEX_LARGE_THRESHOLD <= insert_position < FILE_INDEX_HUGE_THRESHOLD:
+            index_huge = insert_position - FILE_INDEX_LARGE_THRESHOLD
             index_2 = index_huge // (FILE_INDEX_PER_BLOCK ** 2)
             index_1 = (index_huge % (FILE_INDEX_PER_BLOCK ** 2)) // FILE_INDEX_PER_BLOCK
             index_0 = index_huge % FILE_INDEX_PER_BLOCK
             
             # 是否应新增二级索引块
             if index_1 == 0 and index_0 == 0:
-                self.data.d_addr[index_2] = self.new_block_index()
+                self.data.d_addr[index_2] = self.new_data_block_index()
             # 是否应新增一级索引块
             if index_0 == 0:
                 index_block_1 = self.get_self_block(index_2)
-                index_block_1[index_1] = self.new_block_index()
+                index_block_1[index_1] = self.new_data_block_index()
             
             # 在计算出的位置设置索引
             index_block_2 = self.get_self_block(index_2)
@@ -142,49 +141,49 @@ class Inode:
         
         raise Exception("文件已达最大大小，无法增加索引块")
     
-    def remove_index(self) -> None:
-        block_count: int = ceil(self.data.d_size / BLOCK_BYTES)
+    def pop_index(self) -> None:
+        pop_position: int = ceil(self.data.d_size / BLOCK_BYTES) - 1
         
         # 小型文件
-        if 0 < block_count <= FILE_INDEX_SMALL_THRESHOLD:
-            self.data.d_addr[block_count] = 0
+        if 0 <= pop_position < FILE_INDEX_SMALL_THRESHOLD:
+            self.data.d_addr[pop_position] = 0
             return
         
         # 大型文件
-        if FILE_INDEX_SMALL_THRESHOLD < block_count <= FILE_INDEX_LARGE_THRESHOLD:
-            index_big = block_count - FILE_INDEX_SMALL_THRESHOLD
+        if FILE_INDEX_SMALL_THRESHOLD <= pop_position < FILE_INDEX_LARGE_THRESHOLD:
+            index_big = pop_position - FILE_INDEX_SMALL_THRESHOLD
             index_1 = index_big // FILE_INDEX_PER_BLOCK
             index_0 = index_big % FILE_INDEX_PER_BLOCK
             
             # 在计算出的位置清除索引
-            index_block = self.get_self_block(index_1)
-            index_block[index_0] = 0
+            block_1 = self.get_self_block(index_1)
+            block_1[index_0] = 0
 
             # 是否应删除一级索引块
             if index_0 == 0:
-                self.delete_index(self.data.d_addr[index_1])
+                self.delete_data_block(block_1.data_block_index)
                 self.data.d_addr[index_1] = 0
             return
         
         # 巨型文件
-        if FILE_INDEX_LARGE_THRESHOLD < block_count <= FILE_INDEX_HUGE_THRESHOLD:
-            index_huge = block_count - FILE_INDEX_LARGE_THRESHOLD
+        if FILE_INDEX_LARGE_THRESHOLD <= pop_position < FILE_INDEX_HUGE_THRESHOLD:
+            index_huge = pop_position - FILE_INDEX_LARGE_THRESHOLD
             index_2 = index_huge // (FILE_INDEX_PER_BLOCK ** 2)
             index_1 = (index_huge % (FILE_INDEX_PER_BLOCK ** 2)) // FILE_INDEX_PER_BLOCK
             index_0 = index_huge % FILE_INDEX_PER_BLOCK
             
             # 在计算出的位置清除索引
-            index_block_2 = self.get_self_block(index_2)
-            index_block_1 = index_block_2.subblock(index_1)
-            index_block_1[index_0] = 0
+            block_2 = self.get_self_block(index_2)
+            block_1 = block_2.subblock(index_1)
+            block_1[index_0] = 0
             
             # 是否应删除一级索引块
             if index_0 == 0:
-                self.delete_index(self.data.d_addr[index_2])
-                self.data.d_addr[index_2] = 0
+                self.delete_data_block(block_1.data_block_index)
+                block_2[index_1] = 0
             # 是否应删除二级索引块
             if index_1 == 0:
-                self.delete_index(self.data.d_addr[index_2])
+                self.delete_data_block(block_2.data_block_index)
                 self.data.d_addr[index_2] = 0
             return
 

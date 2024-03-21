@@ -1,15 +1,11 @@
-from typing import Any, Callable
-from construct import Struct, Int32ub, Int16ub, Container
-from structures import *
 from constants import *
-from enum import Enum
 from object_accessor import ObjectAccessor
-from free_block_interface import FreeBlockInterface
 
-class IndexBlock:
-    def __init__(self, index: int, indexes: list[int], object_accessor: ObjectAccessor):
-        self.index = index
+class FileIndexBlock:
+    def __init__(self, data_block_index: int, indexes: list[int], object_accessor: ObjectAccessor):
+        self.data_block_index = data_block_index
         self.indexes = indexes
+        assert len(self.indexes) == FILE_INDEX_PER_BLOCK
         self.object_accessor = object_accessor
 
     @classmethod
@@ -35,10 +31,10 @@ class IndexBlock:
         self.flush()
 
     def flush(self) -> None:
-        self.object_accessor.file_index_blocks[self.index] = self.indexes        
+        self.object_accessor.file_index_blocks[self.data_block_index] = self.indexes        
  
     def to_list(self) -> list[int]:
         return self.indexes.copy()
     
-    def subblock(self, index: int) -> 'IndexBlock':
-        return IndexBlock.from_index(self[index], self.object_accessor)
+    def subblock(self, index: int) -> 'FileIndexBlock':
+        return FileIndexBlock.from_index(self[index], self.object_accessor)
