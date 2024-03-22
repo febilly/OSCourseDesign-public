@@ -7,6 +7,7 @@ import os
 from file_index_block import FileIndexBlock
 from free_block_interface import FreeBlockInterface
 from dir_block import DirBlock
+from math import ceil
 
 class Disk:
     def __init__(self, path: str):
@@ -73,9 +74,32 @@ class Disk:
         
         return inode
     
+    def truncate(self, path: str, size: int) -> None:
+        inode = self._get_inode(path)
+        origin_blockcount = ceil(inode.size / BLOCK_BYTES)
+        target_blockcount = ceil(size / BLOCK_BYTES)
+        for _ in range(target_blockcount, origin_blockcount):
+            inode.pop_block()
+        inode.size = size
+        inode.flush()
+    
+    def read_file(self, path: str, offset: int, size: int) -> bytes:
+        assert size >= 0
+        inode = self._get_inode(path)
+        size = min(size, inode.size - offset)
+        
+        full_block_count = size // BLOCK_BYTES
+        last_block_size = size % BLOCK_BYTES
+    
+        
+    
+    
+    
+    
+    
+    
     def format(self):
         pass
-        
     
     @property
     def inode_size(self) -> int:

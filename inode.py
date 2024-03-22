@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Generator, NewType
 from construct import Struct, Int32ul, Container
 from constants import *
 from enum import Enum
@@ -15,9 +15,37 @@ class FILE_TYPE(Enum):
     DIR = 2
     BLOCK_DEVICE = 3
 
+class Stage(Enum):
+    SMALL = 0
+    LARGE = 1
+    HUGE = 2
+
+class block_index_planner:
+    def __init__(self, start: int = 0, len: int = -1):
+        self.start = start
+        self.len = len
+        self.stage = Stage.SMALL
+    
+    def _small(self, start: int) -> Generator[tuple[int, int, int], None, None]:
+        for index_0 in range(start, INODE_SMALL_THRESHOLD):
+            yield 0, 0, index_0
+        
+    def _large(self, start: int) -> Generator[tuple[int, int, int], None, None]:
+        start_index_1 = start // FILE_INDEX_PER_BLOCK
+        start_index_0 = start % FILE_INDEX_PER_BLOCK
+        
+        for index_1 in range(INODE_SMALL_THRESHOLD + start_index_1, INODE_LARGE_THRESHOLD):
+            for index_0 in range(start_index_0, FILE_INDEX_PER_BLOCK):
+                yield 0, index_1, index_0
+            start_index_0 = 0
+
+    def __next__
+    
+
 class Inode:
     """
     注意：
+    需要手动flush
     每次增加或减少一个块之后，必须立刻更新文件大小;
     如果一个文件索引块是空的，就必须被移除;
     不论是增加文件大小还是减小，都要先操作一个索引块，再操作文件大小;
@@ -62,6 +90,13 @@ class Inode:
     def file_type(self) -> FILE_TYPE:
         return FILE_TYPE(self.data.d_mode.IFMT)
     
+    @property
+    def size(self) -> int:
+        return self.data.d_size
+    @size.setter
+    def size(self, value: int) -> None:
+        self.data.d_size = value
+    
     def flush(self) -> None:
         self.object_accessor.inodes[self.index] = self.data
     
@@ -73,35 +108,63 @@ class Inode:
     
     def _get_index_list(self, block_index: int) -> list[int]:
         list = self._get_index_block(block_index).to_list()
-        while list[-1] == 0:
+        while list and list[-1] == 0:
             list.pop()
         return list
     
-    def get_block_list(self) -> list[int]:
+    def _get_block_list(self, start_block: int = 0) -> Generator[int, None, None]:
         """
         我们首先获取原始的混合索引表，
         根据列表的长度判断此文件是小型文件、大型文件，还是巨型文件。
         返回完整的文件块序号列表
-        """
+        """        
         compressed_list: list[int] = self.data.d_addr.copy()
-        while compressed_list[-1] == 0:  # 去掉末尾的0
+        while compressed_list and compressed_list[-1] == 0:  # 去掉末尾的0
             compressed_list.pop()
         
-        # 将直接索引块的序号加进result
-        result: list[int] = compressed_list[:INODE_SMALL_THRESHOLD]
+        # 直接索引块的序号
+        if start_block <= FILE_INDEX_SMALL_THRESHOLD:
+            for index_0 in compressed_list[start_block:INODE_SMALL_THRESHOLD]:
+                yield index_0
+            start_block = FILE_INDEX_SMALL_THRESHOLD
         
         # 解压一次直接索引块（如果有的话）
-        for index in compressed_list[INODE_SMALL_THRESHOLD:INODE_LARGE_THRESHOLD]:
-            result += self._get_index_list(index)
+        if start_block <= FILE_INDEX_LARGE_THRESHOLD:
+            start_block -= FILE_INDEX_SMALL_THRESHOLD
+            start_index_1 = start_block // FILE_INDEX_PER_BLOCK
+            start_index_0 = start_block % FILE_INDEX_PER_BLOCK
+            
+            for index_1 in compressed_list[INODE_SMALL_THRESHOLD + start_index_1 : INODE_LARGE_THRESHOLD]:
+                for index_0 in self._get_index_list(index_1)[start_index_0:]:
+                    yield index_0
+                start_index_0 = 0
+                
+            start_block = FILE_INDEX_LARGE_THRESHOLD
             
         # 解压二次直接索引块（如果有的话）
-        indexes: list[int] = []  # 存放一次间接索引块的序号
-        for index in compressed_list[INODE_LARGE_THRESHOLD:]:
-            indexes += self._get_index_list(index)
-        for index in indexes:
-            result += self._get_index_list(index)
-        
-        return result
+        if start_block <= FILE_INDEX_HUGE_THRESHOLD:
+            start_block -= FILE_INDEX_LARGE_THRESHOLD
+            start_index_2 = start_block // (FILE_INDEX_PER_BLOCK ** 2)
+            start_index_1 = (start_block % (FILE_INDEX_PER_BLOCK ** 2)) // FILE_INDEX_PER_BLOCK
+            start_index_0 = start_block % FILE_INDEX_PER_BLOCK
+
+            for index_2 in compressed_list[INODE_LARGE_THRESHOLD + start_index_2 : ]:
+                for index_1 in self._get_index_list(index_2)[start_index_1:]:
+                    for index_0 in self._get_index_list(index_1)[start_index_0:]:
+                        yield index_0
+                    start_index_0 = 0
+                start_index_1 = 0
+
+    
+    def get_block_list(self, start_block: int = 0, len: int = -1) -> Generator[int, None, None]:
+        """
+        获取文件的块序号列表
+        """
+        for block_index in self._get_block_list(start_block):
+            if len == 0:
+                break
+            yield block_index
+            len -= 1
     
     def _new_data_block_index(self) -> int:
         return self.free_block_manager.allocate_block(zero=True)
@@ -208,9 +271,7 @@ class Inode:
 
     def update_atime(self) -> None:
         self.data.d_atime = timestamp()
-        self.flush()
         
     def update_mtime(self) -> None:
         self.data.d_mtime = timestamp()
-        self.flush()
         
