@@ -2,30 +2,9 @@ from block_device import CachedBlockDevice
 from constants import *
 from structures import *
 from construct import Container
-from typing import Callable, TypeVar, Generic
+# from lazy_proxy_array import LazyProxyArray
+from lazy_array import LazyArray
 import globals
-
-ItemType = TypeVar('ItemType')
-class LazyArray(Generic[ItemType]):
-    def __init__(self, length: int, getter: Callable[[int], ItemType], setter: Callable[[int, ItemType], None]):
-        self.length = length
-        self.getter = getter
-        self.setter = setter
-        
-    def __getitem__(self, index):
-        assert 0 <= index < self.length
-        return self.getter(index)
-    
-    def __setitem__(self, index, value):
-        assert 0 <= index < self.length
-        self.setter(index, value)
-        
-    def __len__(self):
-        return self.length
-    
-    def __iter__(self):
-        for i in range(self.length):
-            yield self[i]
 
 
 class ObjectAccessor:
@@ -39,7 +18,7 @@ class ObjectAccessor:
         self.block_device = block_device
     
     # 给下面读写数据块用的工厂方法
-    def _create_lazy_array(self, parser, builder, item_type) -> LazyArray:
+    def _create_lazy_proxy_array(self, parser, builder, item_type) -> LazyArray:
         def getter(index):
             block_index = DATA_START + index
             block_bytes = self.block_device.read_block(block_index)
@@ -96,28 +75,28 @@ class ObjectAccessor:
     # 文件数据块
     @property
     def file_blocks(self) -> LazyArray[bytes]:
-        return self._create_lazy_array(lambda x: x, lambda x: x, bytes)
+        return self._create_lazy_proxy_array(lambda x: x, lambda x: x, bytes)
    
     # 目录数据块
     @property
     def dir_blocks(self) -> LazyArray[list[Container]]:
         parser = DirectoryBlockStruct.parse
         builder = DirectoryBlockStruct.build
-        return self._create_lazy_array(parser, builder, list[Container])
+        return self._create_lazy_proxy_array(parser, builder, list[Container])
 
     # 文件索引块
     @property
     def file_index_blocks(self) -> LazyArray[list[int]]:
         parser = FileIndexBlock.parse
         builder = FileIndexBlock.build
-        return self._create_lazy_array(parser, builder, list[int])
+        return self._create_lazy_proxy_array(parser, builder, list[int])
     
     # 空白块索引块
     @property
     def free_index_blocks(self) -> LazyArray[Container]:
         parser = FreeBlockIndexBlock.parse
         builder = FreeBlockIndexBlock.build
-        return self._create_lazy_array(parser, builder, Container)
+        return self._create_lazy_proxy_array(parser, builder, Container)
     
     # 清空一个数据块
     def clear_data_block(self, block_index: int) -> None:

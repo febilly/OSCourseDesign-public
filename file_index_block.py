@@ -13,7 +13,8 @@ class FileIndexBlock:
         """
         通过块号构造索引对象
         """
-        index_data = object_accessor.file_index_blocks[index]
+        # index_data: list[int] = object_accessor.file_index_blocks[index]._obj
+        index_data: list[int] = object_accessor.file_index_blocks[index]
         return cls(index, index_data, object_accessor)
         
     def __getitem__(self, index: int) -> int:

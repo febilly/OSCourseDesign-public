@@ -1,11 +1,12 @@
 from typing import Any
-from construct import Struct, Int32ub, Int16ub, Container
+from construct import Struct, Int32ul, Container
 from constants import *
 from enum import Enum
 from object_accessor import ObjectAccessor
 from free_block_interface import FreeBlockInterface
 from file_index_block import FileIndexBlock
 from math import ceil
+from utils import timestamp
 
 class FILE_TYPE(Enum):
     FILE = 0
@@ -37,18 +38,23 @@ class Inode:
         """
         通过Inode号码构造Inode对象
         """
+        # inode_data: Container[Any] = object_accessor.inodes[index]._obj
         inode_data: Container[Any] = object_accessor.inodes[index]
         return cls(index, inode_data, object_accessor, free_block_manager)
     
     @classmethod
-    def find_empty_inode_index(cls, object_accessor: ObjectAccessor) -> int:
-        """
-        找到一个空闲的Inode号码
-        """
-        for index in range(INODE_COUNT):
-            if not object_accessor.inodes[index].d_mode.IALLOC:
-                return index
-        raise Exception("No empty inode")
+    def new(cls, index: int,
+            file_type: FILE_TYPE,
+            object_accessor: ObjectAccessor,
+            free_block_manager: FreeBlockInterface):
+        mode = 0b1_00_0000_111_111_111
+        mode |= file_type.value << 13
+        mode = mode.to_bytes(2, 'little')
+    
+    
+    @property
+    def file_type(self) -> FILE_TYPE:
+        return FILE_TYPE(self.data.d_mode.IFMT)
     
     def flush(self) -> None:
         self.object_accessor.inodes[self.index] = self.data

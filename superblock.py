@@ -1,5 +1,5 @@
 from object_accessor import ObjectAccessor
-from construct import Struct, Int32ub, Int16ub, Container
+from construct import Struct, Int32ul, Container
 from constants import *
 from free_block_interface import FreeBlockInterface
 
@@ -8,6 +8,9 @@ class Superblock(FreeBlockInterface):
     def __init__(self, data: Container, object_accessor: ObjectAccessor):
         self.data = data
         self.object_accessor = object_accessor
+    
+    def flush(self) -> None:
+        self.object_accessor.superblock = self.data
     
     def allocate_block(self, zero=False) -> int:
         self.data.s_nfree -= 1
@@ -53,6 +56,10 @@ class Superblock(FreeBlockInterface):
         self.data.s_ninode -= 1
         index = self.data.s_inode[self.data.s_ninode]
     
+        # 设置IALLOC位
+        # inode = self.object_accessor.inodes[index]
+        # inode.d_mode.IALLOC = 1
+    
         # 如果用完了缓存的空白inode表，就一次性把它填充满
         if self.data.s_ninode == 0:
             self._fill_inode()
@@ -60,4 +67,12 @@ class Superblock(FreeBlockInterface):
         return index
     
     def release_inode(self, inode_index: int) -> None:
+        # 清除IALLOC位
+        inode = self.object_accessor.inodes[inode_index]
+        inode.d_mode.IALLOC = 0
+        
+        # 如果缓存的空白inode表没装满，就把这个空出来的inode塞进去 
+        if self.data.s_ninode < INODE_PER_BLOCK:
+            self.data.s_inode[self.data.s_ninode] = inode_index
+            self.data.s_ninode += 1
         
