@@ -1,6 +1,7 @@
 from constants import *
 from construct import Container
 from object_accessor import ObjectAccessor
+from structures import DirectoryBlockStruct
 
 class DirBlock:
     def __init__(self, dir_block_index: int, dirs: list[Container], object_accessor: ObjectAccessor):
@@ -16,6 +17,12 @@ class DirBlock:
         """
         # dirs: list[Container] = object_accessor.dir_blocks[index]._obj
         dirs: list[Container] = object_accessor.dir_blocks[index]
+        return cls(index, dirs, object_accessor)
+
+    @classmethod
+    def new(cls, index: int, object_accessor: ObjectAccessor):
+        data = b"\x00" * DATA_BLOCK_BYTES
+        dirs = DirectoryBlockStruct.parse(data)
         return cls(index, dirs, object_accessor)
 
     def __getitem__(self, index: int) -> Container:

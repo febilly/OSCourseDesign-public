@@ -82,6 +82,8 @@ class BlockDevice:
         self.image_file.seek(block_number * BLOCK_BYTES)
         self.image_file.write(data)
         
+    def close(self) -> None:
+        self.image_file.close()
 
 class CachedBlockDevice(BlockDevice):
     def __init__(self, path_to_image: str):
@@ -140,5 +142,5 @@ class CachedBlockDevice(BlockDevice):
         
     def close(self) -> None:
         self.flush()
-        self.image_file.close()
+        super().close()
     

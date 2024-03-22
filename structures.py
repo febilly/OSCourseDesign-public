@@ -61,9 +61,9 @@ assert InodeBlockStruct.sizeof() == BLOCK_BYTES
 
 # 普通文件数据块
 FileBlockStruct = Struct(
-    "data" / Bytes(DATA_BYTES),
+    "data" / Bytes(DATA_BLOCK_BYTES),
 )
-assert FileBlockStruct.sizeof() == DATA_BYTES
+assert FileBlockStruct.sizeof() == DATA_BLOCK_BYTES
 
 # 目录文件数据块
 DirectoryStruct = Struct(
@@ -73,7 +73,7 @@ DirectoryStruct = Struct(
 assert DirectoryStruct.sizeof() == 32
 
 DirectoryBlockStruct = Array(16, DirectoryStruct)
-assert DirectoryBlockStruct.sizeof() == DATA_BYTES
+assert DirectoryBlockStruct.sizeof() == DATA_BLOCK_BYTES
 
 # 空闲块索引块
 FreeBlockIndexBlock = Struct(
