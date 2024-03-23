@@ -18,12 +18,14 @@ class ObjectAccessor:
     # 给下面读写数据块用的工厂方法
     def _create_lazy_proxy_array(self, parser, builder, item_type) -> LazyArray:
         def getter(index):
-            block_index = DATA_START + index
+            # block_index = DATA_START + index
+            block_index = index
             block_bytes = self.block_device.read_block(block_index)
             return parser(block_bytes)
 
         def setter(index, value) -> None:
-            block_index = DATA_START + index
+            # block_index = DATA_START + index
+            block_index = index
             block_bytes = builder(value)
             self.block_device.write_block(block_index, block_bytes)
 

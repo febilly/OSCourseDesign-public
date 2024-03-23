@@ -22,14 +22,6 @@ SuperBlockStruct = Struct(
 assert SuperBlockStruct.sizeof() == SUPERBLOCK_BYTES
 
 InodeMode = BitStruct(
-    Padding(16),
-    "IALLOC" / Flag,
-    "IFMT" / BitsInteger(2),
-    "ILARG" / Flag,
-    "ISUID" / Flag,
-    "ISGID" / Flag,
-    "ISVTX" / Flag,
-    "IREAD" / Flag,
     "IWRITE" / Flag,
     "IEXEC" / Flag,
     "IREAD2" / Flag,
@@ -38,6 +30,14 @@ InodeMode = BitStruct(
     "IREAD3" / Flag,
     "IWRITE3" / Flag,
     "IEXEC3" / Flag,
+    "IALLOC" / Flag,
+    "IFMT" / BitsInteger(2),
+    "ILARG" / Flag,
+    "ISUID" / Flag,
+    "ISGID" / Flag,
+    "ISVTX" / Flag,
+    "IREAD" / Flag,
+    Padding(16),
 )
 assert InodeMode.sizeof() == 4
 
@@ -67,8 +67,8 @@ assert FileBlockStruct.sizeof() == DATA_BLOCK_BYTES
 
 # 目录文件数据块
 DirectoryStruct = Struct(
-    "d_ino" / Int32ul,
-    "d_name" / PaddedString(28, "utf8"),
+    "m_ino" / Int32ul,
+    "m_name" / PaddedString(28, "utf8"),
 )
 assert DirectoryStruct.sizeof() == 32
 

@@ -39,24 +39,24 @@ class DirBlock:
         self.object_accessor.file_index_blocks[self.dir_block_index] = self.dirs
     
     def __contains__(self, item: str) -> bool:
-        return any([dir.d_name == item for dir in self.dirs])
+        return any([dir.m_name == item for dir in self.dirs])
     
     def find(self, name: str) -> int:
         for index, dir in enumerate(self.dirs):
-            if dir.d_name == name:
-                return index
+            if dir.m_name == name:
+                return dir.m_ino
         return -1
     
     def is_empty(self) -> bool:
-        return all([dir.d_ino == 0 for dir in self.dirs])
+        return all([dir.m_ino == 0 for dir in self.dirs])
     
     def is_full(self) -> bool:
-        return all([dir.d_ino != 0 for dir in self.dirs])
+        return all([dir.m_ino != 0 for dir in self.dirs])
     
     def add(self, ino: int, name: str) -> bool:
         for index, dir in enumerate(self.dirs):
-            if dir.d_ino == 0:
-                self.dirs[index] = Container(d_ino=ino, d_name=name)
+            if dir.m_ino == 0:
+                self.dirs[index] = Container(m_ino=ino, m_name=name)
                 self.flush()
                 return True
         return False
@@ -65,7 +65,7 @@ class DirBlock:
         index = self.find(name)
         if index == -1:
             return False
-        self.dirs[index] = Container(d_ino=0, d_name="")
+        self.dirs[index] = Container(m_ino=0, m_name="")
         self.flush()
         return True
     
