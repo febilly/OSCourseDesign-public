@@ -20,7 +20,8 @@ class Inode:
     """
     注意：
     需要手动flush
-    每次增加或减少一个块之后，必须立刻更新文件大小;
+    内部会维护一个块数，在init的时候根据文件大小进行初始化
+    （所以要保证在init的时候文件大小和块数是能对上的）
     如果一个文件索引块是空的，就必须被移除;
     不论是增加文件大小还是减小，都要先操作一个索引块，再操作文件大小;
     （因为文件大小被用来定位需要操作的索引块）
@@ -33,6 +34,7 @@ class Inode:
         self.data = data
         self.object_accessor = object_accessor
         self.free_block_manager = free_block_manager
+        self.block_count = ceil(self.data.d_size / BLOCK_BYTES)
         
     @classmethod
     def from_index(cls, index: int,
@@ -70,10 +72,6 @@ class Inode:
     @size.setter
     def size(self, value: int) -> None:
         self.data.d_size = value
-    
-    @property
-    def block_count(self) -> int:
-        return ceil(self.data.d_size / BLOCK_BYTES)
     
     def flush(self) -> None:
         self.object_accessor.inodes[self.index] = self.data
@@ -146,6 +144,13 @@ class Inode:
                 break
             yield block_index
             length -= 1
+            
+    def get_one_block(self, index: int) -> int:
+        """
+        获取文件的一个块
+        """
+        iterator = self.block_list(index, 1)
+        return next(iterator)
     
     def _new_data_block_index(self) -> int:
         return self.free_block_manager.allocate_block(zero=True)
@@ -158,6 +163,7 @@ class Inode:
         向索引列表中添加一个新的索引
         """
         insert_position: int = self.block_count
+        self.block_count += 1
         index_1, index_2, index_3 = self._get_block_index(insert_position)
         
         # 小型文件
@@ -199,6 +205,7 @@ class Inode:
     
     def pop_block(self) -> None:
         pop_position: int = self.block_count - 1
+        self.block_count -= 1
         index_1, index_2, index_3 = self._get_block_index(pop_position)
         
         # 小型文件
