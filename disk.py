@@ -24,7 +24,7 @@ class Disk:
         if path == '/':
             return self.root_inode
 
-        parent_path, name = os.path.split('/')
+        parent_path, name = os.path.split(path)
         parent = self._get_inode(parent_path)
         
         if name == '':
