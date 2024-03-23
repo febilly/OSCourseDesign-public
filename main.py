@@ -3,6 +3,7 @@ from disk import Disk
 disk = Disk("disk.img")
 disk.mount()
 
-print(disk._get_inode('/dev').data.d_size)
+inode = disk._get_inode('/testfilename123')
+print(inode.data.d_size)
 
 disk.unmount()
