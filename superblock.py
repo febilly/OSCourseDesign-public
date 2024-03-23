@@ -1,5 +1,5 @@
 from object_accessor import ObjectAccessor
-from construct import Struct, Int32ul, Container
+from construct import Container
 from constants import *
 from free_block_interface import FreeBlockInterface
 

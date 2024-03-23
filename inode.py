@@ -1,5 +1,5 @@
-from typing import Any, Generator, NewType
-from construct import Struct, Int32ul, Container
+from typing import Any, Generator
+from construct import Container
 from constants import *
 from enum import Enum
 from object_accessor import ObjectAccessor
@@ -7,7 +7,7 @@ from free_block_interface import FreeBlockInterface
 from file_index_block import FileIndexBlock
 from math import ceil
 from utils import timestamp
-from structures import InodeMode, InodeStruct
+from structures import InodeStruct
 
 class FILE_TYPE(Enum):
     FILE = 0

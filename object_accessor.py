@@ -2,7 +2,6 @@ from block_device import CachedBlockDevice
 from constants import *
 from structures import *
 from construct import Container
-# from lazy_proxy_array import LazyProxyArray
 from lazy_array import LazyArray
 
 

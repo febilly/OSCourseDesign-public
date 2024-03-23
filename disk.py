@@ -4,8 +4,6 @@ from object_accessor import ObjectAccessor
 from superblock import Superblock
 from inode import Inode, FILE_TYPE
 import os
-from file_index_block import FileIndexBlock
-from free_block_interface import FreeBlockInterface
 from dir_block import DirBlock
 from math import ceil
 
