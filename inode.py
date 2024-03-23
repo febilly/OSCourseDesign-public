@@ -145,7 +145,7 @@ class Inode:
             yield block_index
             length -= 1
             
-    def get_one_block(self, index: int) -> int:
+    def peek_block(self, index: int) -> int:
         """
         获取文件的一个块
         """
@@ -203,33 +203,37 @@ class Inode:
         
         raise Exception("文件已达最大大小，无法增加索引块")
     
-    def pop_block(self) -> None:
+    def pop_block(self) -> int:
         pop_position: int = self.block_count - 1
         self.block_count -= 1
         index_1, index_2, index_3 = self._get_block_index(pop_position)
         
         # 小型文件
         if pop_position < FILE_INDEX_SMALL_THRESHOLD:
+            result = self.data.d_addr[pop_position]
             self.data.d_addr[pop_position] = 0
-            return
+            return result
         
         # 大型文件
         if pop_position < FILE_INDEX_LARGE_THRESHOLD:
             # 清除索引
             block_1 = self._get_index_block(self.data.d_addr[index_1])
+            result = block_1[index_2]
             block_1[index_2] = 0
             
             # 是否应删除第一层索引块
             if index_2 == 0:
                 self._delete_data_block(self.data.d_addr[index_1])
                 self.data.d_addr[index_1] = 0
-            return        
+                
+            return result
         
         # 巨型文件
         if pop_position < FILE_INDEX_HUGE_THRESHOLD:
             # 清除索引
             block_1 = self._get_index_block(self.data.d_addr[index_1])
             block_2 = block_1.subblock(index_2)
+            result = block_2[index_3]
             block_2[index_3] = 0
             
             # 是否应删除第二层索引块
@@ -241,6 +245,8 @@ class Inode:
             if index_2 == index_3 == 0:
                 self._delete_data_block(self.data.d_addr[index_1])
                 self.data.d_addr[index_1] = 0
+            
+            return result
         
         raise Exception("文件为空，无法删除索引块")
         

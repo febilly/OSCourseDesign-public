@@ -43,14 +43,14 @@ class Disk:
         
         raise FileNotFoundError(f"{path} is not a directory")
     
-    def create_file(self, path: str) -> Inode:
-        parent_path, name = os.path.split('/')
+    def create_file(self, path: str, type: FILE_TYPE) -> Inode:
+        parent_path, name = os.path.split(path)
         if name == '':
             raise FileNotFoundError("File name is empty")
         
-        # 创建新的文件的inode
+        # 创建新的文件（夹）的inode
         block_index = self.superblock.allocate_block()
-        inode = Inode.new(block_index, FILE_TYPE.FILE, self.object_accessor, self.superblock)
+        inode = Inode.new(block_index, type, self.object_accessor, self.superblock)
         inode.flush()
         
         parent = self._get_inode(parent_path)
@@ -65,33 +65,58 @@ class Disk:
         new_block_index = self.superblock.allocate_block()
         dir_block = DirBlock.new(new_block_index, self.object_accessor)
         dir_block.add(inode.index, name)
-        dir_block.flush()
         
         parent.push_block(new_block_index)
         parent.flush()
         
         return inode
     
+    def remove_file(self, path: str) -> None:
+        parent_path, name = os.path.split(path)
+        if name == '':
+            raise FileNotFoundError("File name is empty")
+
+        parent = self._get_inode(parent_path)
+        
+        for index in parent.block_list():
+            dir_block = DirBlock.from_index(index, self.object_accessor)
+            if name not in dir_block:
+                continue
+            inode_no = dir_block.find(name)
+            self.superblock.release_inode(inode_no)
+            dir_block.remove(name)
+            
+            # 检查是否要移除多余的DirBlock
+            if dir_block.is_empty() and parent.block_count > 1:
+                self.superblock.release_block(index)
+                stack = []
+                while (index_2 := parent.pop_block()) != index:
+                    stack.append(index_2)
+                for index_2 in stack[::1]:
+                    parent.push_block(index_2)
+            
+            return
+        
+        raise FileNotFoundError(f"{path} not found")
+    
     def truncate(self, path: str, new_size: int) -> None:
         inode = self._get_inode(path)
         if inode.file_type != FILE_TYPE.FILE:
             raise FileNotFoundError(f"{path} is not a file")
-        origin_blockcount = ceil(inode.size / BLOCK_BYTES)
         target_blockcount = ceil(new_size / BLOCK_BYTES)
         
-        if target_blockcount < origin_blockcount:
-            for _ in range(target_blockcount, origin_blockcount):
-                inode.pop_block()                    
-        elif target_blockcount > origin_blockcount:
-            for _ in range(origin_blockcount, target_blockcount):
-                block_index = self.superblock.allocate_block(zero=True)
-                inode.push_block(block_index)
+        while inode.block_count < target_blockcount:
+            block_index = self.superblock.allocate_block(zero=True)
+            inode.push_block(block_index)
+        while inode.block_count > target_blockcount:
+            block_index = inode.pop_block()
+            self.superblock.release_block(block_index)
         
         # 进行块内的修剪
         # 修建的是truncate之后留下的最后一个块
         if new_size % BLOCK_BYTES != 0 and 0 < new_size < inode.size:
             last_block_position = new_size % BLOCK_BYTES
-            last_block_index = inode.get_one_block(target_blockcount - 1)
+            last_block_index = inode.peek_block(target_blockcount - 1)
             block_data = self.object_accessor.file_blocks[last_block_index]
             block_data = block_data[:last_block_position] + b"\x00" * (BLOCK_BYTES - last_block_position)
             self.object_accessor.file_blocks[last_block_index] = block_data
@@ -124,7 +149,7 @@ class Disk:
         inode = self._get_inode(path)
         start_block_index = offset // BLOCK_BYTES
         position = offset % BLOCK_BYTES
-        bytes_written = 0
+        target_size = offset + len(data)
         
         if position > inode.size:  # 如果起始位置就已经超过文件大小了，那就先扩展文件到起始位置
             self.truncate(path, position)
@@ -132,7 +157,6 @@ class Disk:
         # 对现有的block进行覆写
         for index in inode.block_list(start_block_index):
             part_length = min(len(data), BLOCK_BYTES - position)
-            bytes_written += part_length
             chunk, data = data[:part_length], data[part_length:]
             
             block_data = self.object_accessor.file_blocks[index]
@@ -142,9 +166,6 @@ class Disk:
             if len(data) == 0:
                 break
         
-        # 原文件的最后一个块有可能原来没写满
-        inode.size = max(inode.size, offset + bytes_written)
-
         # 如果新的数据比原来就有的还多，就要加新的block来写
         while (len(data) > 0):
             part_length = min(len(data), BLOCK_BYTES)
@@ -155,8 +176,7 @@ class Disk:
             self.object_accessor.file_blocks[block_index] = chunk
             inode.push_block(block_index)
             
-            inode.size += part_length
-
+        inode.size = max(inode.size, target_size)
         inode.flush()
 
     
