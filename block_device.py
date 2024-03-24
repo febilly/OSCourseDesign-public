@@ -13,6 +13,9 @@ class CacheBlock:
         self.data = data
         self.writer = writer
         self.dirty = dirty
+        
+        if self.dirty:
+            self.flush()
 
     def read_full(self) -> bytes:
         return self.data
