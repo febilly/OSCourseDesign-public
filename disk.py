@@ -6,25 +6,16 @@ from inode import Inode, FILE_TYPE
 import os
 from dir_block import DirBlock
 from math import ceil
+from file import File
 
 class Disk:
     def __init__(self, path: str):
         self.path = path
+        self.opened_files: dict[int, File] = {}
+        self.path_to_handle: dict[str, int] = {}
+        self.handle_to_path: dict[int, str] = {}
+        self.new_handle = 1
         
-    def mount(self):
-        self.block_device = CachedBlockDevice(self.path)
-        self.object_accessor = ObjectAccessor(self.block_device)
-        self.superblock = Superblock(self.object_accessor.superblock, self.object_accessor)
-        self.root_inode = Inode.from_index(INODE_ROOT_NO, self.object_accessor, self.superblock)
-        
-    def flush(self):
-        self.superblock.flush()
-        self.root_inode.flush()
-        self.block_device.flush()
-    
-    def unmount(self):
-        self.block_device.close()
-
     def _get_inode(self, path: str) -> Inode:
         if path == '/':
             return self.root_inode
@@ -45,6 +36,34 @@ class Disk:
             return Inode.from_index(inode_no, self.object_accessor, self.superblock)
         
         raise FileNotFoundError(f"{path} not found")
+
+    def open(self, path: str) -> int:
+        if path in self.path_to_handle:
+            return self.path_to_handle[path]
+        
+        handle = self.new_handle
+        self.new_handle += 1
+
+        inode = self._get_inode(path)
+        file = File(path, inode)
+        self.opened_files[handle] = file
+        self.path_to_handle[path] = handle
+        self.handle_to_path[handle] = path
+        return handle
+        
+    def mount(self):
+        self.block_device = CachedBlockDevice(self.path)
+        self.object_accessor = ObjectAccessor(self.block_device)
+        self.superblock = Superblock(self.object_accessor.superblock, self.object_accessor)
+        self.root_inode = Inode.from_index(INODE_ROOT_NO, self.object_accessor, self.superblock)
+        
+    def flush(self):
+        self.superblock.flush()
+        self.root_inode.flush()
+        self.block_device.flush()
+    
+    def unmount(self):
+        self.block_device.close()
     
     def create_file(self, path: str, type: FILE_TYPE) -> Inode:
         parent_path, name = os.path.split(path)
@@ -83,6 +102,12 @@ class Disk:
         return inode
     
     def remove_file(self, path: str) -> None:
+        if path in self.path_to_handle:
+            handle = self.path_to_handle[path]
+            self.opened_files.pop(handle)
+            self.path_to_handle.pop(path)
+            self.handle_to_path.pop(handle)
+        
         parent_path, name = os.path.split(path)
         if name == '':
             raise FileNotFoundError("File name is empty")
@@ -111,12 +136,15 @@ class Disk:
         
         raise FileNotFoundError(f"{path} not found")
     
-    def truncate(self, path: str, new_size: int) -> None:
-        inode = self._get_inode(path)
-        if inode.file_type != FILE_TYPE.FILE:
-            raise FileNotFoundError(f"{path} is not a file")
-        target_blockcount = ceil(new_size / BLOCK_BYTES)
+    def truncate(self, handle: int, new_size: int) -> None:
+        if handle not in self.opened_files:
+            raise FileNotFoundError(f"File handle {handle} not found")
         
+        inode = self.opened_files[handle].inode
+        if inode.file_type != FILE_TYPE.FILE:
+            raise FileNotFoundError(f"{self.handle_to_path[handle]} is not a file")
+        
+        target_blockcount = ceil(new_size / BLOCK_BYTES)
         while inode.block_count < target_blockcount:
             block_index = self.superblock.allocate_block(zero=True)
             inode.push_block(block_index)
@@ -136,8 +164,14 @@ class Disk:
         inode.size = new_size
         inode.flush()
     
-    def read_file(self, path: str, offset: int, size: int) -> bytes:
-        inode = self._get_inode(path)
+    def read_file(self, handle: int, offset: int, size: int) -> bytes:
+        if handle not in self.opened_files:
+            raise FileNotFoundError(f"File handle {handle} not found")
+        
+        inode = self.opened_files[handle].inode
+        if inode.file_type != FILE_TYPE.FILE:
+            raise FileNotFoundError(f"{self.handle_to_path[handle]} is not a file")
+
         offset = max(offset, 0)
         if size < 0:
             size = inode.size - offset
@@ -161,8 +195,14 @@ class Disk:
             
         return result
     
-    def write_file(self, path: str, offset: int, data: bytes) -> None:
-        inode = self._get_inode(path)
+    def write_file(self, handle: int, offset: int, data: bytes) -> None:
+        if handle not in self.opened_files:
+            raise FileNotFoundError(f"File handle {handle} not found")
+        
+        inode = self.opened_files[handle].inode
+        if inode.file_type != FILE_TYPE.FILE:
+            raise FileNotFoundError(f"{self.handle_to_path[handle]} is not a file")
+
         if offset < 0:
             offset = inode.size
         
