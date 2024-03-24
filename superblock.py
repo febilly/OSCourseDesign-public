@@ -8,7 +8,13 @@ class Superblock(FreeBlockInterface):
     def __init__(self, data: Container, object_accessor: ObjectAccessor):
         self.data = data
         self.object_accessor = object_accessor
-    
+        
+        # 我也不知道为啥s_ninode会大于100......
+        # 我读了superblock一看，s_ninode是六千多，人都给我看傻了
+        if self.data.s_ninode > SUPERBLOCK_FREE_INODE or self.data.s_ninode <= 0:
+            self.data.s_ninode = 0
+            self._fill_inode()
+            
     def flush(self) -> None:
         self.object_accessor.superblock = self.data
     
@@ -47,9 +53,9 @@ class Superblock(FreeBlockInterface):
         for index in range(INODE_COUNT):
             if self.object_accessor.inodes[index].d_mode.IALLOC:
                 continue
-            self.data.s_inode[index] = index
+            self.data.s_inode[self.data.s_ninode] = index
             self.data.s_ninode += 1
-            if self.data.s_ninode == INODE_PER_BLOCK:
+            if self.data.s_ninode == SUPERBLOCK_FREE_INODE:
                 break
                 
     def allocate_inode(self) -> int:
