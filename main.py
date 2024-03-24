@@ -20,6 +20,9 @@ disk.create_file(NEW_DIR_PATH, FILE_TYPE.DIR)
 
 NEW_FILE_PATH = '/testdir/newfile1'
 disk.create_file(NEW_FILE_PATH, FILE_TYPE.FILE)
-
+disk.write_file(NEW_FILE_PATH, -1, b'hello')
+disk.flush()
+data = disk.read_file(NEW_FILE_PATH, -1, -1)
+print(data)
 
 disk.unmount()

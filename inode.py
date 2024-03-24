@@ -117,6 +117,8 @@ class Inode:
         compressed_list: list[int] = self.data.d_addr.copy()
         while compressed_list and compressed_list[-1] == 0:  # 去掉末尾的0
             compressed_list.pop()
+        if not compressed_list:
+            return
 
         for start_index_1, start_index_2, start_index_3 in self._block_index_planner(start_block):
             if start_index_2 == -1:

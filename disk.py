@@ -17,6 +17,11 @@ class Disk:
         self.superblock = Superblock(self.object_accessor.superblock, self.object_accessor)
         self.root_inode = Inode.from_index(INODE_ROOT_NO, self.object_accessor, self.superblock)
         
+    def flush(self):
+        self.superblock.flush()
+        self.root_inode.flush()
+        self.block_device.flush()
+    
     def unmount(self):
         self.block_device.close()
 
@@ -39,7 +44,7 @@ class Disk:
             inode_no = dir_block.find(name)
             return Inode.from_index(inode_no, self.object_accessor, self.superblock)
         
-        raise FileNotFoundError(f"{path} is not a directory")
+        raise FileNotFoundError(f"{path} not found")
     
     def create_file(self, path: str, type: FILE_TYPE) -> Inode:
         parent_path, name = os.path.split(path)
@@ -47,7 +52,7 @@ class Disk:
             raise FileNotFoundError("File name is empty")
         
         # 创建新的文件（夹）的inode
-        block_index = self.superblock.allocate_block()
+        block_index = self.superblock.allocate_inode()
         inode = Inode.new(block_index, type, self.object_accessor, self.superblock)
         inode.flush()
         
