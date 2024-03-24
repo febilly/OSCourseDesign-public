@@ -1,7 +1,11 @@
 from disk import Disk
 from inode import FILE_TYPE
+import shutil
 
-disk = Disk("disk.img")
+temp_img_file = "temp.img"
+shutil.copyfile("disk.img", temp_img_file)
+
+disk = Disk(temp_img_file)
 disk.mount()
 
 FILEPATH = '/testfilename123'
