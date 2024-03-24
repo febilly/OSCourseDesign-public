@@ -115,8 +115,8 @@ class Disk:
         inode = self._get_inode(path)
         if inode.file_type != FILE_TYPE.FILE:
             raise FileNotFoundError(f"{path} is not a file")
-        target_blockcount = ceil(new_size / BLOCK_BYTES)
         
+        target_blockcount = ceil(new_size / BLOCK_BYTES)
         while inode.block_count < target_blockcount:
             block_index = self.superblock.allocate_block(zero=True)
             inode.push_block(block_index)
