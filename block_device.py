@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from typing import Callable, TypeVar, Generic
-from constants import *
+import constants as C
 import os
 
 class CacheBlock:
@@ -18,7 +18,7 @@ class CacheBlock:
         return self.data
     
     def read_bytes(self, start: int, length: int) -> bytes:
-        assert start + length <= BLOCK_BYTES, f"start: {start} + length: {length} > BLOCK_SIZE: {BLOCK_BYTES}"
+        assert start + length <= C.BLOCK_BYTES, f"start: {start} + length: {length} > BLOCK_SIZE: {C.BLOCK_BYTES}"
         return self.data[start:start + length]
         
     def flush(self) -> None:
@@ -27,9 +27,9 @@ class CacheBlock:
             self.dirty = False
 
     def modify_bytes(self, start: int, data: bytes) -> None:
-        assert start + len(data) <= BLOCK_BYTES, f"start: {start} + len(data): {len(data)} > BLOCK_SIZE: {BLOCK_BYTES}"
+        assert start + len(data) <= C.BLOCK_BYTES, f"start: {start} + len(data): {len(data)} > BLOCK_SIZE: {C.BLOCK_BYTES}"
         self.data = self.data[:start] + data + self.data[start + len(data):]
-        if start + len(data) == BLOCK_BYTES:
+        if start + len(data) == C.BLOCK_BYTES:
             self.writer(self.data)
             self.dirty = False
         else:
@@ -70,16 +70,16 @@ class BlockDevice:
     def __init__(self, path_to_image: str):
         self.path_to_image = path_to_image
         self.image_size = os.path.getsize(path_to_image)
-        assert self.image_size % BLOCK_BYTES == 0
+        assert self.image_size % C.BLOCK_BYTES == 0
         self.image_file = open(path_to_image, "r+b")
-        self.block_count = self.image_size // BLOCK_BYTES
+        self.block_count = self.image_size // C.BLOCK_BYTES
         
     def read_block(self, block_number: int) -> bytes:
-        self.image_file.seek(block_number * BLOCK_BYTES)
-        return self.image_file.read(BLOCK_BYTES)
+        self.image_file.seek(block_number * C.BLOCK_BYTES)
+        return self.image_file.read(C.BLOCK_BYTES)
     
     def write_block(self, block_number: int, data: bytes) -> None:
-        self.image_file.seek(block_number * BLOCK_BYTES)
+        self.image_file.seek(block_number * C.BLOCK_BYTES)
         self.image_file.write(data)
         
     def close(self) -> None:
@@ -88,7 +88,7 @@ class BlockDevice:
 class CachedBlockDevice(BlockDevice):
     def __init__(self, path_to_image: str):
         super().__init__(path_to_image)
-        self.cache = LRUCache[CacheBlock](LRU_CACHE_LENGTH)
+        self.cache = LRUCache[CacheBlock](C.LRU_CACHE_LENGTH)
     
     def _generate_writer(self, block_number: int) -> Callable[[bytes], None]:
         parent = super()
@@ -105,7 +105,7 @@ class CachedBlockDevice(BlockDevice):
         return block.read_bytes(start, length)
 
     def read_block(self, block_number: int) -> bytes:
-        return self.read_block_bytes(block_number, 0, BLOCK_BYTES)
+        return self.read_block_bytes(block_number, 0, C.BLOCK_BYTES)
 
     def read_block_range(self, start: int, end: int) -> bytes:
         """
@@ -132,8 +132,8 @@ class CachedBlockDevice(BlockDevice):
         左闭右开，从0开始
         data的长度必须是BLOCK_SIZE的整数倍
         """
-        assert len(data) % BLOCK_BYTES == 0
-        data_chunks = [data[i : i + BLOCK_BYTES] for i in range(0, len(data), BLOCK_BYTES)]
+        assert len(data) % C.BLOCK_BYTES == 0
+        data_chunks = [data[i : i + C.BLOCK_BYTES] for i in range(0, len(data), C.BLOCK_BYTES)]
         for i, chunk in enumerate(data_chunks):
             self.write_block(start + i, chunk)
             

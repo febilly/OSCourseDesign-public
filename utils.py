@@ -1,4 +1,4 @@
-from constants import *
+import constants as C
 from time import time
 from datetime import datetime
 

@@ -1,4 +1,4 @@
-from constants import *
+import constants as C
 from construct import Container
 from object_accessor import ObjectAccessor
 from structures import DirectoryBlockStruct
@@ -7,7 +7,7 @@ class DirBlock:
     def __init__(self, dir_block_index: int, dirs: list[Container], object_accessor: ObjectAccessor):
         self.dir_block_index = dir_block_index
         self.dirs = dirs
-        assert len(self.dirs) == DIRECTORY_PER_BLOCK
+        assert len(self.dirs) == C.DIRECTORY_PER_BLOCK
         self.object_accessor = object_accessor
 
     @classmethod
@@ -21,7 +21,7 @@ class DirBlock:
 
     @classmethod
     def new(cls, index: int, object_accessor: ObjectAccessor):
-        data = b"\x00" * DATA_BLOCK_BYTES
+        data = b"\x00" * C.DATA_BLOCK_BYTES
         dirs = DirectoryBlockStruct.parse(data)
         return cls(index, dirs, object_accessor)
 

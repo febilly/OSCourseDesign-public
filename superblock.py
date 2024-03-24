@@ -1,6 +1,6 @@
 from object_accessor import ObjectAccessor
 from construct import Container
-from constants import *
+import constants as C
 from free_block_interface import FreeBlockInterface
 
 
@@ -11,7 +11,7 @@ class Superblock(FreeBlockInterface):
         
         # 我也不知道为啥s_ninode会大于100......
         # 我读了superblock一看，s_ninode是六千多，人都给我看傻了
-        if self.data.s_ninode > SUPERBLOCK_FREE_INODE or self.data.s_ninode <= 0:
+        if self.data.s_ninode > C.SUPERBLOCK_FREE_INODE or self.data.s_ninode <= 0:
             self.data.s_ninode = 0
             self._fill_inode()
             
@@ -36,7 +36,7 @@ class Superblock(FreeBlockInterface):
         return index
 
     def release_block(self, block_index: int) -> None:
-        if self.data.s_nfree < FREE_INDEX_PER_BLOCK:
+        if self.data.s_nfree < C.FREE_INDEX_PER_BLOCK:
             self.data.s_free[self.data.s_nfree] = block_index
             self.data.s_nfree += 1
         else:
@@ -45,17 +45,17 @@ class Superblock(FreeBlockInterface):
             self.object_accessor.free_index_blocks[block_index] = new_block
 
             self.data.s_nfree = 1
-            self.data.s_free = [0] * FREE_INDEX_PER_BLOCK
+            self.data.s_free = [0] * C.FREE_INDEX_PER_BLOCK
             self.data.s_free[0] = new_block.data_block_index
     
     def _fill_inode(self) -> None:
         assert self.data.s_ninode == 0
-        for index in range(INODE_COUNT):
+        for index in range(C.INODE_COUNT):
             if self.object_accessor.inodes[index].d_mode.IALLOC:
                 continue
             self.data.s_inode[self.data.s_ninode] = index
             self.data.s_ninode += 1
-            if self.data.s_ninode == SUPERBLOCK_FREE_INODE:
+            if self.data.s_ninode == C.SUPERBLOCK_FREE_INODE:
                 break
                 
     def allocate_inode(self) -> int:
@@ -78,7 +78,7 @@ class Superblock(FreeBlockInterface):
         inode.d_mode.IALLOC = 0
         
         # 如果缓存的空白inode表没装满，就把这个空出来的inode塞进去 
-        if self.data.s_ninode < INODE_PER_BLOCK:
+        if self.data.s_ninode < C.INODE_PER_BLOCK:
             self.data.s_inode[self.data.s_ninode] = inode_index
             self.data.s_ninode += 1
         

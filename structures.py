@@ -1,5 +1,5 @@
 from construct import BitStruct, Int16ul, Struct, Int32ul, Array, Bytes, Padding, Union, Flag, BitsInteger, PaddedString
-from constants import *
+import constants as C
 
 # 超级块
 SuperBlockStruct = Struct(
@@ -19,7 +19,7 @@ SuperBlockStruct = Struct(
     "s_time" / Int32ul,
     Padding(4 * 47),  # 填充到1024字节
 )
-assert SuperBlockStruct.sizeof() == SUPERBLOCK_BYTES
+assert SuperBlockStruct.sizeof() == C.SUPERBLOCK_BYTES
 
 InodeMode = BitStruct(
     "IWRITE" / Flag,
@@ -54,16 +54,16 @@ InodeStruct = Struct(
     "d_atime" / Int32ul,
     "d_mtime" / Int32ul,
 )
-assert InodeStruct.sizeof() == INODE_BYTES
+assert InodeStruct.sizeof() == C.INODE_BYTES
 
 InodeBlockStruct = Array(8, InodeStruct)
-assert InodeBlockStruct.sizeof() == BLOCK_BYTES
+assert InodeBlockStruct.sizeof() == C.BLOCK_BYTES
 
 # 普通文件数据块
 FileBlockStruct = Struct(
-    "data" / Bytes(DATA_BLOCK_BYTES),
+    "data" / Bytes(C.DATA_BLOCK_BYTES),
 )
-assert FileBlockStruct.sizeof() == DATA_BLOCK_BYTES
+assert FileBlockStruct.sizeof() == C.DATA_BLOCK_BYTES
 
 # 目录文件数据块
 DirectoryStruct = Struct(
@@ -73,7 +73,7 @@ DirectoryStruct = Struct(
 assert DirectoryStruct.sizeof() == 32
 
 DirectoryBlockStruct = Array(16, DirectoryStruct)
-assert DirectoryBlockStruct.sizeof() == DATA_BLOCK_BYTES
+assert DirectoryBlockStruct.sizeof() == C.DATA_BLOCK_BYTES
 
 # 空闲块索引块
 FreeBlockIndexBlock = Struct(
@@ -81,11 +81,11 @@ FreeBlockIndexBlock = Struct(
     "s_free" / Array(100, Int32ul),
     Padding(4 * 27),  # 填充到512字节
 )
-assert FreeBlockIndexBlock.sizeof() == BLOCK_BYTES
+assert FreeBlockIndexBlock.sizeof() == C.BLOCK_BYTES
 
 # 文件索引块
 FileIndexBlock = Array(128, Int32ul)
-assert FileIndexBlock.sizeof() == BLOCK_BYTES
+assert FileIndexBlock.sizeof() == C.BLOCK_BYTES
 
 # 一个盘块
 DiskBlock = Union(

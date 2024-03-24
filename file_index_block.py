@@ -1,11 +1,11 @@
-from constants import *
+import constants as C
 from object_accessor import ObjectAccessor
 
 class FileIndexBlock:
     def __init__(self, block_index: int, indexes: list[int], object_accessor: ObjectAccessor):
         self.block_index = block_index
         self.indexes = indexes
-        assert len(self.indexes) == FILE_INDEX_PER_BLOCK
+        assert len(self.indexes) == C.FILE_INDEX_PER_BLOCK
         self.object_accessor = object_accessor
 
     @classmethod

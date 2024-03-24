@@ -1,6 +1,6 @@
 from typing import Any, Generator
 from construct import Container
-from constants import *
+import constants as C
 from enum import Enum
 from object_accessor import ObjectAccessor
 from free_block_interface import FreeBlockInterface
@@ -34,7 +34,7 @@ class Inode:
         self.data = data
         self.object_accessor = object_accessor
         self.free_block_manager = free_block_manager
-        self.block_count = ceil(self.data.d_size / BLOCK_BYTES)
+        self.block_count = ceil(self.data.d_size / C.BLOCK_BYTES)
         
     @classmethod
     def from_index(cls, index: int,
@@ -55,7 +55,7 @@ class Inode:
         mode = 0b1_00_0000_111_111_111
         mode |= file_type.value << 13
         mode = mode.to_bytes(4, 'little')
-        inode = mode + b'\x00' * (INODE_BYTES - 4)
+        inode = mode + b'\x00' * (C.INODE_BYTES - 4)
         inode = InodeStruct.parse(inode)
         time = timestamp()
         inode.d_atime = time
@@ -86,28 +86,28 @@ class Inode:
         return list
     
     def _get_block_index(self, index: int):
-        if index < FILE_INDEX_SMALL_THRESHOLD:
+        if index < C.FILE_INDEX_SMALL_THRESHOLD:
             return index, -1, -1
-        if index < FILE_INDEX_LARGE_THRESHOLD:
-            index -= FILE_INDEX_SMALL_THRESHOLD
-            index_1 = index // FILE_INDEX_PER_BLOCK + INODE_SMALL_THRESHOLD
-            index_2 = index % FILE_INDEX_PER_BLOCK
+        if index < C.FILE_INDEX_LARGE_THRESHOLD:
+            index -= C.FILE_INDEX_SMALL_THRESHOLD
+            index_1 = index // C.FILE_INDEX_PER_BLOCK + C.INODE_SMALL_THRESHOLD
+            index_2 = index % C.FILE_INDEX_PER_BLOCK
             return index_1, index_2, -1
-        if index < FILE_INDEX_HUGE_THRESHOLD:
-            index -= FILE_INDEX_LARGE_THRESHOLD
-            index_1 = index // (FILE_INDEX_PER_BLOCK ** 2) + INODE_LARGE_THRESHOLD
-            index_2 = (index % (FILE_INDEX_PER_BLOCK ** 2)) // FILE_INDEX_PER_BLOCK
-            index_3 = index % FILE_INDEX_PER_BLOCK
+        if index < C.FILE_INDEX_HUGE_THRESHOLD:
+            index -= C.FILE_INDEX_LARGE_THRESHOLD
+            index_1 = index // (C.FILE_INDEX_PER_BLOCK ** 2) + C.INODE_LARGE_THRESHOLD
+            index_2 = (index % (C.FILE_INDEX_PER_BLOCK ** 2)) // C.FILE_INDEX_PER_BLOCK
+            index_3 = index % C.FILE_INDEX_PER_BLOCK
             return index_1, index_2, index_3
         return -1, -1, -1
 
     def _block_index_planner(self, start: int):
         index_1, index_2, index_3 = self._get_block_index(start)
-        while index_1 < INODE_HUGE_THRESHOLD:
+        while index_1 < C.INODE_HUGE_THRESHOLD:
             yield index_1, index_2, index_3
             index_1 += 1
-            index_2 = -1 if index_1 < INODE_SMALL_THRESHOLD else 0
-            index_3 = -1 if index_1 < INODE_LARGE_THRESHOLD else 0
+            index_2 = -1 if index_1 < C.INODE_SMALL_THRESHOLD else 0
+            index_3 = -1 if index_1 < C.INODE_LARGE_THRESHOLD else 0
         raise StopIteration
 
     def _block_list(self, start_block: int = 0) -> Generator[int, None, None]:
@@ -169,12 +169,12 @@ class Inode:
         index_1, index_2, index_3 = self._get_block_index(insert_position)
         
         # 小型文件
-        if insert_position < FILE_INDEX_SMALL_THRESHOLD:
+        if insert_position < C.FILE_INDEX_SMALL_THRESHOLD:
             self.data.d_addr[insert_position] = index
             return
         
         # 大型文件
-        if insert_position < FILE_INDEX_LARGE_THRESHOLD:
+        if insert_position < C.FILE_INDEX_LARGE_THRESHOLD:
             # 是否应新增第一层索引块
             if index_2 == 0:
                 self.data.d_addr[index_1] = self._new_data_block_index()
@@ -186,7 +186,7 @@ class Inode:
             return
         
         # 巨型文件
-        if insert_position < FILE_INDEX_HUGE_THRESHOLD:
+        if insert_position < C.FILE_INDEX_HUGE_THRESHOLD:
             # 是否应新增第一层索引块
             if index_2 == index_3 == 0:
                 self.data.d_addr[index_1] = self._new_data_block_index()
@@ -211,13 +211,13 @@ class Inode:
         index_1, index_2, index_3 = self._get_block_index(pop_position)
         
         # 小型文件
-        if pop_position < FILE_INDEX_SMALL_THRESHOLD:
+        if pop_position < C.FILE_INDEX_SMALL_THRESHOLD:
             result = self.data.d_addr[pop_position]
             self.data.d_addr[pop_position] = 0
             return result
         
         # 大型文件
-        if pop_position < FILE_INDEX_LARGE_THRESHOLD:
+        if pop_position < C.FILE_INDEX_LARGE_THRESHOLD:
             # 清除索引
             block_1 = self._get_index_block(self.data.d_addr[index_1])
             result = block_1[index_2]
@@ -231,7 +231,7 @@ class Inode:
             return result
         
         # 巨型文件
-        if pop_position < FILE_INDEX_HUGE_THRESHOLD:
+        if pop_position < C.FILE_INDEX_HUGE_THRESHOLD:
             # 清除索引
             block_1 = self._get_index_block(self.data.d_addr[index_1])
             block_2 = block_1.subblock(index_2)
