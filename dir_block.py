@@ -72,3 +72,6 @@ class DirBlock:
         self.flush()
         return True
     
+    def list(self) -> list[str]:
+        return [dir.m_name for dir in self.dirs if dir.m_ino != 0]
+    

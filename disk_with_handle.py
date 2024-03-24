@@ -1,47 +1,53 @@
 from disk import Disk
+from file import File, OpenedFiles
 
 class DiskWithHandle(Disk):
     def __init__(self, path: str):
         super().__init__(path)
-        self.handle_to_path: dict[int, str] = {}
-        self.path_to_handle: dict[str, int] = {}
+        self.files = OpenedFiles()
         self.new_handle = 1
 
     def open(self, path: str) -> int:
-        if path in self.path_to_handle:
-            return self.path_to_handle[path]
-        
-        handle = self.new_handle
-        self.new_handle += 1
-
-        self.handle_to_path[handle] = path
-        self.path_to_handle[path] = handle
-        return handle
+        if path in self.files:
+            return self.files.find(path)
+        file = File(path)
+        return self.files.add(file)
     
+    def close(self, handle: int) -> None:
+        if handle not in self.files:
+            raise FileNotFoundError(f"File handle {handle} not found")
+        self.files.pop(handle)
+
+    def seek(self, handle: int, offset: int) -> None:
+        file = self.files.get(handle)
+        file.offset = offset
+
+    def list_files(self, handle: int) -> list[str]:
+        file = self.files.get(handle)
+        return super().list_files(file.path)
+
     def remove_file(self, path: str) -> None:
-        if path in self.path_to_handle:
-            handle = self.path_to_handle[path]
-            self.handle_to_path.pop(handle)
-            self.path_to_handle.pop(path)
+        if path in self.files:
+            self.files.pop(path)
         super().remove_file(path)
             
     def truncate(self, handle: int, new_size: int) -> None:
-        if handle not in self.handle_to_path:
-            raise FileNotFoundError(f"File handle {handle} not found")
-        super().truncate(self.handle_to_path[handle], new_size)
+        file = self.files.get(handle)
+        file.offset = min(file.offset, new_size)
+        super().truncate(file.path, new_size)
     
-    def read_file(self, handle: int, offset: int, size: int) -> bytes:
-        if handle not in self.handle_to_path:
-            raise FileNotFoundError(f"File handle {handle} not found")
-        return super().read_file(self.handle_to_path[handle], offset, size)
+    def read_file(self, handle: int, size: int) -> bytes:
+        file = self.files.get(handle)
+        result = super().read_file(file.path, file.offset, size)
+        file.offset += len(result)
+        return result
     
-    def write_file(self, handle: int, offset: int, data: bytes) -> None:
-        if handle not in self.handle_to_path:
-            raise FileNotFoundError(f"File handle {handle} not found")
-        super().write_file(self.handle_to_path[handle], offset, data)
+    def write_file(self, handle: int, data: bytes) -> None:
+        file = self.files.get(handle)
+        file.offset += len(data)
+        super().write_file(file.path, file.offset, data)
         
     def format(self):
-        self.handle_to_path.clear()
-        self.path_to_handle.clear()
+        self.files.clear()
         super().format()
     

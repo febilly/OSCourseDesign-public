@@ -6,6 +6,7 @@ from inode import Inode, FILE_TYPE
 import os
 from dir_block import DirBlock
 from math import ceil
+from utils import get_disk_start
 
 class Disk:
     def __init__(self, path: str):
@@ -13,6 +14,8 @@ class Disk:
         
     def mount(self):
         self.block_device = CachedBlockDevice(self.path)
+        # boot_block = self.block_device.read_block(0)
+        # disk_start = get_disk_start(boot_block)
         self.object_accessor = ObjectAccessor(self.block_device)
         self.superblock = Superblock(self.object_accessor.superblock, self.object_accessor)
         self.root_inode = Inode.from_index(INODE_ROOT_NO, self.object_accessor, self.superblock)
@@ -45,6 +48,18 @@ class Disk:
             return Inode.from_index(inode_no, self.object_accessor, self.superblock)
         
         raise FileNotFoundError(f"{path} not found")
+    
+    def list_files(self, path: str) -> list[str]:
+        inode = self._get_inode(path)
+        if inode.file_type != FILE_TYPE.DIR:
+            raise FileNotFoundError(f"{path} is not a directory")
+        
+        result = []
+        for index in inode.block_list():
+            dir_block = DirBlock.from_index(index, self.object_accessor)
+            result += dir_block.list()
+        
+        return result
     
     def create_file(self, path: str, type: FILE_TYPE) -> Inode:
         parent_path, name = os.path.split(path)
