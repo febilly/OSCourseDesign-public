@@ -52,8 +52,8 @@ class Disk:
             raise FileNotFoundError("File name is empty")
         
         # 创建新的文件（夹）的inode
-        block_index = self.superblock.allocate_inode()
-        inode = Inode.new(block_index, type, self.object_accessor, self.superblock)
+        inode_index = self.superblock.allocate_inode()
+        inode = Inode.new(inode_index, type, self.object_accessor, self.superblock)
         inode.flush()
         
         parent = self._get_inode(parent_path)
