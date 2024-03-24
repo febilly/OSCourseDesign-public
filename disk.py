@@ -71,6 +71,13 @@ class Disk:
         return result
     
     def create_file(self, path: str, type: FILE_TYPE) -> Inode:
+        try:
+            self._get_inode(path)
+        except FileNotFoundError:
+            pass
+        else:
+            raise FileExistsError(f"{path} already exists")
+
         parent_path, name = os.path.split(path)
         if name == '':
             raise FileNotFoundError("File name is empty")
