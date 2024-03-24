@@ -36,7 +36,7 @@ class DirBlock:
         return iter(self.dirs)
 
     def flush(self) -> None:
-        self.object_accessor.file_index_blocks[self.dir_block_index] = self.dirs
+        self.object_accessor.dir_blocks[self.dir_block_index] = self.dirs
     
     def __contains__(self, item: str) -> bool:
         return any([dir.m_name == item for dir in self.dirs])

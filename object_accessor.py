@@ -34,12 +34,13 @@ class ObjectAccessor:
     # 超级块的读写接口
     @property
     def superblock(self) -> Container:
-        data = self.block_device.read_block_range(SUPERBLOCK_START,SUPERBLOCK_START + SUPERBLOCK_BLOCKS)
+        data = self.block_device.read_block_range(SUPERBLOCK_START, SUPERBLOCK_START + SUPERBLOCK_BLOCKS)
         return SuperBlockStruct.parse(data)
     
     @superblock.setter
     def superblock(self, value: Container):
-        self.block_device.write_block_range(0, SuperBlockStruct.build(value))
+        data = SuperBlockStruct.build(value)
+        self.block_device.write_block_range(SUPERBLOCK_START, data)
     
     # inode的读写接口
     @property

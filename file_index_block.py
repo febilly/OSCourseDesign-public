@@ -2,8 +2,8 @@ from constants import *
 from object_accessor import ObjectAccessor
 
 class FileIndexBlock:
-    def __init__(self, data_block_index: int, indexes: list[int], object_accessor: ObjectAccessor):
-        self.data_block_index = data_block_index
+    def __init__(self, block_index: int, indexes: list[int], object_accessor: ObjectAccessor):
+        self.block_index = block_index
         self.indexes = indexes
         assert len(self.indexes) == FILE_INDEX_PER_BLOCK
         self.object_accessor = object_accessor
@@ -25,7 +25,7 @@ class FileIndexBlock:
         self.flush()
 
     def flush(self) -> None:
-        self.object_accessor.file_index_blocks[self.data_block_index] = self.indexes        
+        self.object_accessor.file_index_blocks[self.block_index] = self.indexes        
  
     def to_list(self) -> list[int]:
         return self.indexes.copy()
