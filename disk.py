@@ -64,9 +64,9 @@ class Disk:
             dir_block = DirBlock.from_index(index, self.object_accessor)
             if dir_block.add(inode.index, name):
                 supposed_size = position + dir_block.length() * DIRECTORY_BYTES
-                if supposed_size > inode.size:
-                    inode.size = supposed_size
-                    inode.flush()
+                if supposed_size > parent.size:
+                    parent.size = supposed_size
+                    parent.flush()
                 return inode
             position += DATA_BLOCK_BYTES
 
