@@ -54,7 +54,7 @@ class Inode:
             free_block_manager: FreeBlockInterface):
         mode = 0b1_00_0000_111_111_111
         mode |= file_type.value << 13
-        mode = mode.to_bytes(2, 'little')
+        mode = mode.to_bytes(4, 'little')
         inode = mode + b'\x00' * (INODE_BYTES - 4)
         inode = InodeStruct.parse(inode)
         time = timestamp()

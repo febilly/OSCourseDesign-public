@@ -123,11 +123,15 @@ class Disk:
         inode.flush()
     
     def read_file(self, path: str, offset: int, size: int) -> bytes:
-        assert size >= 0
         inode = self._get_inode(path)
+        offset = max(offset, 0)
+        if size < 0:
+            size = inode.size - offset
+        else:
+            size = min(size, inode.size - offset)
+        
         if inode.file_type != FILE_TYPE.FILE:
             raise FileNotFoundError(f"{path} is not a file")
-        size = min(size, inode.size - offset)
         
         start_block_index = offset // BLOCK_BYTES
         position = offset % BLOCK_BYTES
@@ -145,6 +149,9 @@ class Disk:
     
     def write_file(self, path: str, offset: int, data: bytes) -> None:
         inode = self._get_inode(path)
+        if offset < 0:
+            offset = inode.size
+        
         start_block_index = offset // BLOCK_BYTES
         position = offset % BLOCK_BYTES
         target_size = offset + len(data)

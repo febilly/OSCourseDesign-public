@@ -34,7 +34,8 @@ class ObjectAccessor:
     # 超级块的读写接口
     @property
     def superblock(self) -> Container:
-        return SuperBlockStruct.parse(self.block_device.read_block_range(0, 2))
+        data = self.block_device.read_block_range(SUPERBLOCK_START,SUPERBLOCK_START + SUPERBLOCK_BLOCKS)
+        return SuperBlockStruct.parse(data)
     
     @superblock.setter
     def superblock(self, value: Container):
