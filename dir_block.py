@@ -46,6 +46,9 @@ class DirBlock:
             if dir.m_name == name:
                 return dir.m_ino
         return -1
+
+    def length(self) -> int:
+        return sum([dir.m_ino != 0 for dir in self.dirs])
     
     def is_empty(self) -> bool:
         return all([dir.m_ino == 0 for dir in self.dirs])
