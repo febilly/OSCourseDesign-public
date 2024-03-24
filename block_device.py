@@ -9,11 +9,11 @@ class CacheBlock:
     同时会跟踪这个块是否被修改过
     当写到块尾时，会进行写回，并重置dirty标志
     """
-    def __init__(self, data: bytes, writer: Callable[[bytes], None]):
-        self.dirty = False
+    def __init__(self, data: bytes, writer: Callable[[bytes], None], dirty):
         self.data = data
         self.writer = writer
-        
+        self.dirty = dirty
+
     def read_full(self) -> bytes:
         return self.data
     
@@ -51,12 +51,13 @@ class LRUCache(Generic[ItemType]):
         self.cache.move_to_end(index)
         return self.cache[index]
     
-    def put(self, index: int, item: ItemType) -> None:
+    def put(self, index: int, item: ItemType) -> ItemType | None:
         if index in self.cache:
             self.cache.move_to_end(index)
-        while len(self.cache) >= self.capacity:
-            self.cache.popitem(last=False)
         self.cache[index] = item
+        if len(self.cache) > self.capacity:
+            return self.cache.popitem(last=False)[1]
+        return None
 
     def __contains__(self, index: int) -> bool:
         return index in self.cache
@@ -100,8 +101,9 @@ class CachedBlockDevice(BlockDevice):
         if block_number in self.cache:
             return self.cache.get(block_number).read_bytes(start, length)
         data = super().read_block(block_number)
-        block = CacheBlock(data, self._generate_writer(block_number))
-        self.cache.put(block_number, block)
+        block = CacheBlock(data, self._generate_writer(block_number), False)
+        if popped_block := self.cache.put(block_number, block):
+            popped_block.flush()
         return block.read_bytes(start, length)
 
     def read_block(self, block_number: int) -> bytes:
@@ -121,8 +123,9 @@ class CachedBlockDevice(BlockDevice):
             block = self.cache.get(block_number)
             block.modify_bytes(start, data)
         else:
-            block = CacheBlock(data, self._generate_writer(block_number))
-            self.cache.put(block_number, block)
+            block = CacheBlock(data, self._generate_writer(block_number), True)
+            if popped_block := self.cache.put(block_number, block):
+                popped_block.flush()
         
     def write_block(self, block_number: int, data: bytes) -> None:
         self.write_block_bytes(block_number, 0, data)

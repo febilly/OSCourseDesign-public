@@ -23,7 +23,7 @@ class Superblock(FreeBlockInterface):
         self.data.s_nfree -= 1
         index = self.data.s_free[self.data.s_nfree]
         
-        # 将下一个空闲块索引块读入superblock
+        # 如果superblock里的表已用完，那就将下一个空闲块索引块读入superblock
         if self.data.s_nfree == 0:
             if self.data.s_free[0] == 0:
                 raise Exception("No free block")
@@ -33,7 +33,8 @@ class Superblock(FreeBlockInterface):
             
         if zero:  # 是否清零
             self.object_accessor.clear_data_block(index)
-            
+        
+        print(f"allocate block {index}")
         return index
 
     def release_block(self, block_index: int) -> None:
@@ -48,6 +49,8 @@ class Superblock(FreeBlockInterface):
             self.data.s_nfree = 1
             self.data.s_free = [0] * C.FREE_INDEX_PER_BLOCK
             self.data.s_free[0] = new_block.data_block_index
+            
+        print(f"release block {block_index}")
     
     def _fill_inode(self) -> None:
         assert self.data.s_ninode == 0

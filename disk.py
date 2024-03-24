@@ -35,6 +35,7 @@ class Disk:
         self.block_device.flush()
     
     def unmount(self):
+        self.flush()
         self.block_device.close()
 
     def _get_inode(self, path: str) -> Inode:
