@@ -1,5 +1,6 @@
 from block_device import CachedBlockDevice
 import constants as C
+import disk_info as DiskInfo
 from object_accessor import ObjectAccessor
 from superblock import Superblock
 from inode import Inode, FILE_TYPE
@@ -14,10 +15,18 @@ class Disk:
         
     def mount(self):
         self.block_device = CachedBlockDevice(self.path)
-        # boot_block = self.block_device.read_block(0)
-        # disk_start = get_disk_start(boot_block)
+        
+        boot_block = self.block_device.read_block(0)
+        disk_start = get_disk_start(boot_block)
+        DiskInfo.init_constants(disk_start=disk_start)
+        
         self.object_accessor = ObjectAccessor(self.block_device)
         self.superblock = Superblock(self.object_accessor.superblock, self.object_accessor)
+        
+        inode_block_size = self.superblock.data.s_isize
+        disk_block_size = self.superblock.data.s_fsize
+        DiskInfo.init_constants(disk_start, inode_block_size, disk_block_size)
+        
         self.root_inode = Inode.from_index(C.INODE_ROOT_NO, self.object_accessor, self.superblock)
         
     def flush(self):

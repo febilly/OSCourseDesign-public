@@ -10,7 +10,7 @@ def timestr(timestamp: int) -> str:
 
 def get_disk_start(block: bytes):
     # 检查mbr的魔数
-    if block[:2] == b'\x55\xaa':
+    if block[-2:] == b'\x55\xaa':
         return 200
     else:
         return 0

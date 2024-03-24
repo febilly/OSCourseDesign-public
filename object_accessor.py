@@ -1,5 +1,6 @@
 from block_device import CachedBlockDevice
 import constants as C
+import disk_info as DiskInfo
 from structures import *
 from construct import Container
 from lazy_array import LazyArray
@@ -29,18 +30,18 @@ class ObjectAccessor:
             block_bytes = builder(value)
             self.block_device.write_block(block_index, block_bytes)
 
-        return LazyArray[item_type](C.DATA_BLOCK_COUNT, getter, setter)
+        return LazyArray[item_type](DiskInfo.DATA_BLOCK_COUNT, getter, setter)
 
     # 超级块的读写接口
     @property
     def superblock(self) -> Container:
-        data = self.block_device.read_block_range(C.SUPERBLOCK_START, C.SUPERBLOCK_START + C.SUPERBLOCK_BLOCKS)
+        data = self.block_device.read_block_range(DiskInfo.SUPERBLOCK_START, DiskInfo.SUPERBLOCK_START + C.SUPERBLOCK_BLOCKS)
         return SuperBlockStruct.parse(data)
     
     @superblock.setter
     def superblock(self, value: Container):
         data = SuperBlockStruct.build(value)
-        self.block_device.write_block_range(C.SUPERBLOCK_START, data)
+        self.block_device.write_block_range(DiskInfo.SUPERBLOCK_START, data)
     
     # inode的读写接口
     @property
@@ -54,14 +55,14 @@ class ObjectAccessor:
         需要直接替换那个列表才行。
         """
         def getter(index) -> Container:
-            block_index = C.INODE_START + index // C.INODE_PER_BLOCK
+            block_index = DiskInfo.INODE_START + index // C.INODE_PER_BLOCK
             inode_index = index % C.INODE_PER_BLOCK
             
             block_bytes = self.block_device.read_block(block_index)
             return InodeBlockStruct.parse(block_bytes)[inode_index]
         
         def setter(index, value: Container) -> None:
-            block_index = C.INODE_START + index // C.INODE_PER_BLOCK
+            block_index = DiskInfo.INODE_START + index // C.INODE_PER_BLOCK
             inode_index = index % C.INODE_PER_BLOCK
             
             block_bytes = self.block_device.read_block(block_index)
@@ -71,7 +72,7 @@ class ObjectAccessor:
             block_bytes = InodeBlockStruct.build(inode_block)
             self.block_device.write_block(block_index, block_bytes)
             
-        return LazyArray[Container](C.INODE_COUNT, getter, setter)
+        return LazyArray[Container](DiskInfo.INODE_COUNT, getter, setter)
     
     # 数据块分为文件数据块、目录数据块、文件索引块，以及空白块索引块
     # 文件数据块

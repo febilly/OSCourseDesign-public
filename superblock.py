@@ -1,6 +1,7 @@
 from object_accessor import ObjectAccessor
 from construct import Container
 import constants as C
+import disk_info as DiskInfo
 from free_block_interface import FreeBlockInterface
 
 
@@ -50,7 +51,7 @@ class Superblock(FreeBlockInterface):
     
     def _fill_inode(self) -> None:
         assert self.data.s_ninode == 0
-        for index in range(C.INODE_COUNT):
+        for index in range(DiskInfo.INODE_COUNT):
             if self.object_accessor.inodes[index].d_mode.IALLOC:
                 continue
             self.data.s_inode[self.data.s_ninode] = index

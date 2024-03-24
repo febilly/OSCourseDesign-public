@@ -1,4 +1,4 @@
-from disk_filepath import Disk
+from disk import Disk
 from inode import FILE_TYPE
 
 disk = Disk("disk.img")
