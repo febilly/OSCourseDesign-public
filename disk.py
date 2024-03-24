@@ -58,11 +58,17 @@ class Disk:
         
         parent = self._get_inode(parent_path)
 
+        position = 0
         # 如果父inode的文件索引里面还有空位，就直接添加到空位里
         for index in parent.block_list():
             dir_block = DirBlock.from_index(index, self.object_accessor)
             if dir_block.add(inode.index, name):
+                supposed_size = position + dir_block.length() * DIRECTORY_BYTES
+                if supposed_size > inode.size:
+                    inode.size = supposed_size
+                    inode.flush()
                 return inode
+            position += DATA_BLOCK_BYTES
 
         # 没有空位，因此我们新建一个目录块
         new_block_index = self.superblock.allocate_block()
@@ -70,6 +76,7 @@ class Disk:
         dir_block.add(inode.index, name)
         
         parent.push_block(new_block_index)
+        parent.size += DIRECTORY_BYTES
         parent.flush()
         
         return inode
@@ -90,13 +97,7 @@ class Disk:
             dir_block.remove(name)
             
             # 检查是否要移除多余的DirBlock
-            if dir_block.is_empty() and parent.block_count > 1:
-                self.superblock.release_block(index)
-                stack = []
-                while (index_2 := parent.pop_block()) != index:
-                    stack.append(index_2)
-                for index_2 in stack[::1]:
-                    parent.push_block(index_2)
+            # 好像unix v6++ 里面没有干这个事？那我也不搞了算了
             
             return
         

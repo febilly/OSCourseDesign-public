@@ -1,7 +1,7 @@
 from disk import Disk
 from inode import FILE_TYPE
 
-disk = Disk("disk.img")
+disk = Disk("disk_test2.img")
 disk.mount()
 
 FILEPATH = '/testfilename123'
