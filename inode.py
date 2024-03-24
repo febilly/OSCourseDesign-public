@@ -142,11 +142,11 @@ class Inode:
             length = min(length, self.block_count - start_block)
             
         for block_index in self._block_list(start_block):
-            if length <= 0:
-                break
             yield block_index
             length -= 1
-            
+            if length <= 0:
+                break
+
     def peek_block(self, index: int) -> int:
         """
         获取文件的一个块
