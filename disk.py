@@ -134,33 +134,29 @@ class Disk:
         return inode
     
     def remove_file(self, path: str) -> None:
-        parent_path, name = os.path.split(path)
-        if name == '':
-            raise FileNotFoundError("File name is empty")
+        inode = self._get_inode(path)
+        inode.data.d_nlink -= 1
+        
+        # 只有硬连接数归零了才删除文件
+        if inode.data.d_nlink == 0:
+            self.superblock.release_inode(inode.index)
+            # 如果path是文件夹，那还要移除所有子文件
+            if inode.file_type == FILE_TYPE.DIR:
+                for name in self.list_files(path):
+                    self.remove_file(os.path.join(path, name))
+        else:
+            inode.flush()
 
+        parent_path, name = os.path.split(path)
         parent = self._get_inode(parent_path)
         
+        # 删除文件夹里对此文件的引用
         for index in parent.block_list():
             dir_block = DirBlock.from_index(index, self.object_accessor)
             if name not in dir_block:
                 continue
-            inode_no = dir_block.find(name)
             dir_block.remove(name)
-            inode = Inode.from_index(inode_no, self.object_accessor, self.superblock)
-            
-            inode.data.d_nlink -= 1
-            if inode.data.d_nlink == 0:
-                self.superblock.release_inode(inode_no)
-                dir_block.remove(name)
-            else:
-                inode.flush()
-                
-            # 检查是否要移除多余的DirBlock
-            # 好像unix v6++ 里面没有干这个事？那我也不搞了算了
-            
             return
-        
-        raise FileNotFoundError(f"{path} not found")
     
     def truncate(self, path: str, new_size: int) -> None:
         inode = self._get_inode(path)
