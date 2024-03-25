@@ -7,7 +7,7 @@ from inode import Inode, FILE_TYPE
 import os
 from dir_block import DirBlock
 from math import ceil
-from utils import get_disk_start
+from utils import get_disk_start, get_disk_params
 from format_disk import format_disk
 from dataclasses import dataclass
 import os, errno
@@ -76,15 +76,14 @@ class Disk:
         
         boot_block = self.block_device.read_block(0)
         disk_start = get_disk_start(boot_block)
-        DiskParams.init_constants(disk_start=disk_start)
+        
+        superblock_bytes = self.block_device.read_block_range(disk_start, disk_start + 1)
+        inode_block_size, disk_block_size = get_disk_params(superblock_bytes)
+        
+        DiskParams.init_constants(disk_start, inode_block_size, disk_block_size)
         
         self.object_accessor = ObjectAccessor(self.block_device)
         self.superblock = Superblock(self.object_accessor.superblock, self.object_accessor, new=False)
-        
-        inode_block_size = self.superblock.data.s_isize
-        disk_block_size = self.superblock.data.s_fsize
-        DiskParams.init_constants(disk_start, inode_block_size, disk_block_size)
-        
         self.root_inode = Inode.from_index(C.INODE_ROOT_NO, self.object_accessor, self.superblock)
         
         self.mounted = True
