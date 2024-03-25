@@ -44,3 +44,22 @@ data = disk.read_file(NEW_FILE_PATH_2, -1, -1)
 print(data)
 
 disk.unmount()
+disk.mount()
+
+BIG_FILE = '/testdir/bigfile'
+disk.create_file(BIG_FILE, FILE_TYPE.FILE)
+content = b''
+for i in range(100000):
+    content += f'{i:0>5}'.encode()
+    
+disk.write_file(BIG_FILE, -1, content)
+
+disk.unmount()
+disk.mount()
+
+data = disk.read_file(BIG_FILE, -1, -1)
+
+if data == content:
+    print('Test passed')
+
+disk.unmount()
