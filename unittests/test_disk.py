@@ -66,6 +66,9 @@ class NewDiskTestCase(unittest.TestCase):
         self.disk.truncate(FILE, 10)
         data = self.disk.read_file(FILE, 0, -1)
         self.assertEqual(data, b'This is a ')
+        self.disk.truncate(FILE, 12)
+        data = self.disk.read_file(FILE, 0, -1)
+        self.assertEqual(data, b'This is a \0\0')
 
     def test_write_and_read_large_file(self):
         content = b''
