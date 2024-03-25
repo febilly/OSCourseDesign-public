@@ -3,29 +3,40 @@ from disk import Disk
 from inode import FILE_TYPE
 import shutil
 
-class DiskTestCase(unittest.TestCase):
+IMG = 'temp.img'
+
+DIR = '/unittestdir'
+FILE = '/unittestdir/newfile1'
+
+D1 = '/unittestdir/newdir1'
+D2 = '/unittestdir/newdir2'
+D3 = '/unittestdir/newdir3'
+
+F1 = '/unittestdir/newfile1'
+F2 = '/unittestdir/newfile2'
+F3 = '/unittestdir/newfile3'
+
+
+class NewDiskTestCase(unittest.TestCase):
     def setUp(self):
-        self.temp_img_file = "temp.img"
-        shutil.copyfile("disk.img", self.temp_img_file)
-        self.disk = Disk(self.temp_img_file)
+        self.disk = Disk.new(IMG)
         self.disk.mount()
+        self.disk.create_file(DIR, FILE_TYPE.DIR)
+        self.disk.create_file(FILE, FILE_TYPE.FILE)
 
     def tearDown(self):
         self.disk.unmount()
 
     def test_create_directory(self):
-        NEW_DIR_PATH = '/unittestdir'
-        self.disk.create_file(NEW_DIR_PATH, FILE_TYPE.DIR)
-        self.assertTrue(self.disk.exists(NEW_DIR_PATH))
+        self.disk.create_file(D1, FILE_TYPE.DIR)
+        self.assertTrue(self.disk.exists(D1))
 
     def test_create_file(self):
-        NEW_FILE_PATH = '/unittestdir/newfile1'
-        self.disk.create_file(NEW_FILE_PATH, FILE_TYPE.FILE)
-        self.assertTrue(self.disk.exists(NEW_FILE_PATH))
+        self.disk.create_file(F1, FILE_TYPE.FILE)
+        self.assertTrue(self.disk.exists(F1))
 
     def test_remove_file(self):
-        FILE_PATH = '/unittestdir/newfile1'
-        self.disk.create_file(FILE_PATH, FILE_TYPE.FILE)
+        self.disk.create_file(F1, FILE_TYPE.FILE)
         self.assertTrue(self.disk.exists(FILE_PATH))
         self.disk.remove_file(FILE_PATH)
         self.assertFalse(self.disk.exists(FILE_PATH))
