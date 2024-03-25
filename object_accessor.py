@@ -30,7 +30,7 @@ class ObjectAccessor:
             block_bytes = builder(value)
             self.block_device.write_block(block_index, block_bytes)
 
-        return LazyArray[item_type](DiskInfo.DATA_BLOCK_COUNT, getter, setter)
+        return LazyArray[item_type](DiskInfo.DISK_BLOCK_SIZE, getter, setter)
 
     # 超级块的读写接口
     @property

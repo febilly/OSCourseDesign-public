@@ -2,64 +2,42 @@ from disk import Disk
 from inode import FILE_TYPE
 import shutil
 
-temp_img_file = "temp.img"
-shutil.copyfile("disk.img", temp_img_file)
+IMG = 'temp.img'
 
-disk = Disk(temp_img_file)
+DIR = '/unittestdir'
+FILE = '/unittestdir/newfile1'
+
+D1 = '/unittestdir/newdir1'
+D2 = '/unittestdir/newdir2'
+
+F1 = '/unittestdir/newfile1'
+F2 = '/unittestdir/newfile2'
+
+D1F1 = '/unittestdir/newdir1/newfile1'
+D1F2 = '/unittestdir/newdir1/newfile2'
+
+D1D2 = '/unittestdir/newdir1/newdir2'
+D1D2F1 = '/unittestdir/newdir1/newdir2/newfile1'
+D1D2F2 = '/unittestdir/newdir1/newdir2/newfile2'
+
+disk = Disk.new(IMG)
 disk.mount()
+disk.create_file(DIR, FILE_TYPE.DIR)
+disk.create_file(FILE, FILE_TYPE.FILE)
 
-FILEPATH = '/testfilename123'
+disk.create_file(D1, FILE_TYPE.DIR)
+assert(disk.exists(D1))
+disk.create_file(D1F1, FILE_TYPE.FILE)
+assert(disk.exists(D1F1))
+disk.create_file(D1D2, FILE_TYPE.DIR)
+assert(disk.exists(D1D2))
+disk.create_file(D1D2F1, FILE_TYPE.FILE)
+assert(disk.exists(D1D2F1))
 
-inode = disk._get_inode(FILEPATH)
-print(inode.data.d_size)
-data = disk.read_file(FILEPATH, -1, -1)
-print(data)
-
-disk.write_file(FILEPATH, -1, b'hello')
-data = disk.read_file(FILEPATH, -1, -1)
-print(data)
-
-NEW_DIR_PATH = '/testdir'
-disk.create_file(NEW_DIR_PATH, FILE_TYPE.DIR)
-
-NEW_FILE_PATH = '/testdir/newfile1'
-disk.create_file(NEW_FILE_PATH, FILE_TYPE.FILE)
-disk.write_file(NEW_FILE_PATH, -1, b'hello')
-disk.flush()
-
-data = disk.read_file(NEW_FILE_PATH, -1, -1)
-print(data)
-
-disk.unmount()
-
-disk.mount()
-NEW_FILE_PATH_2 = '/testdir/newfile2'
-disk.create_file(NEW_FILE_PATH_2, FILE_TYPE.FILE)
-disk.write_file(NEW_FILE_PATH_2, -1, b'hello222')
-disk.flush()
-
-data = disk.read_file(NEW_FILE_PATH, -1, -1)
-print(data)
-data = disk.read_file(NEW_FILE_PATH_2, -1, -1)
-print(data)
-
-disk.unmount()
-disk.mount()
-
-BIG_FILE = '/testdir/bigfile'
-disk.create_file(BIG_FILE, FILE_TYPE.FILE)
-content = b''
-for i in range(100000):
-    content += f'{i:0>5}'.encode()
-    
-disk.write_file(BIG_FILE, -1, content)
-
-disk.unmount()
-disk.mount()
-
-data = disk.read_file(BIG_FILE, -1, -1)
-
-if data == content:
-    print('Test passed')
+disk.remove_file(D1)
+assert not (disk.exists(D1))
+assert not (disk.exists(D1F1))
+assert not (disk.exists(D1D2))
+assert not (disk.exists(D1D2F1))
 
 disk.unmount()

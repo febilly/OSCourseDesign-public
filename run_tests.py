@@ -1,6 +1,6 @@
 import unittest
 
-from tests.test_disk import DiskTestCase
+from unittests.test_disk import NewDiskTestCase
 
 if __name__ == '__main__':
     unittest.main()

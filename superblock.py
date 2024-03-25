@@ -7,10 +7,12 @@ from utils import timestamp
 
 
 class Superblock(FreeBlockInterface):
-    def __init__(self, data: Container, object_accessor: ObjectAccessor):
+    def __init__(self, data: Container, object_accessor: ObjectAccessor, fill: bool = True):
         self.data = data
         self.object_accessor = object_accessor
         
+        if not fill:
+            return
         # 我也不知道为啥s_ninode会大于100......
         # 我读了superblock一看，s_ninode是六千多，人都给我看傻了
         if self.data.s_ninode > C.SUPERBLOCK_FREE_INODE or self.data.s_ninode <= 0:
@@ -34,7 +36,7 @@ class Superblock(FreeBlockInterface):
             s_fmod = 0,
             s_ronly = 0,
             s_time = timestamp())
-        object = cls(data, object_accessor)
+        object = cls(data, object_accessor, fill=False)
         object._fill_inode(1)
         return object
         
@@ -56,7 +58,7 @@ class Superblock(FreeBlockInterface):
         if zero:  # 是否清零
             self.object_accessor.clear_data_block(index)
         
-        print(f"allocate block {index}")
+        # print(f"allocate block {index}")
         return index
 
     def release_block(self, block_index: int) -> None:
@@ -70,9 +72,9 @@ class Superblock(FreeBlockInterface):
 
             self.data.s_nfree = 1
             self.data.s_free = [0] * C.FREE_INDEX_PER_BLOCK
-            self.data.s_free[0] = new_block.data_block_index
+            self.data.s_free[0] = block_index
             
-        print(f"release block {block_index}")
+        # print(f"release block {block_index}")
     
     def _fill_inode(self, start: int = 0) -> None:
         assert self.data.s_ninode == 0
@@ -102,8 +104,8 @@ class Superblock(FreeBlockInterface):
         # 清除IALLOC位
         inode = self.object_accessor.inodes[inode_index]
         inode.d_mode.IALLOC = 0
-        inode.flush()
-        
+        self.object_accessor.inodes[inode_index] = inode
+
         # 如果缓存的空白inode表没装满，就把这个空出来的inode塞进去 
         if self.data.s_ninode < C.INODE_PER_BLOCK:
             self.data.s_inode[self.data.s_ninode] = inode_index

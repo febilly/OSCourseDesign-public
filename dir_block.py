@@ -40,8 +40,14 @@ class DirBlock:
     
     def __contains__(self, item: str) -> bool:
         return any([dir.m_name == item for dir in self.dirs])
-    
-    def find(self, name: str) -> int:
+
+    def index(self, name: str) -> int:
+        for index, dir in enumerate(self.dirs):
+            if dir.m_name == name:
+                return index
+        return -1
+
+    def find_inode(self, name: str) -> int:
         for index, dir in enumerate(self.dirs):
             if dir.m_name == name:
                 return dir.m_ino
@@ -65,7 +71,7 @@ class DirBlock:
         return False
     
     def remove(self, name: str) -> bool:
-        index = self.find(name)
+        index = self.index(name)
         if index == -1:
             return False
         self.dirs[index] = Container(m_ino=0, m_name="")

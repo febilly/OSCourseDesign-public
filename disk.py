@@ -70,7 +70,7 @@ class Disk:
             dir_block = DirBlock.from_index(index, self.object_accessor)
             if name not in dir_block:
                 continue
-            inode_no = dir_block.find(name)
+            inode_no = dir_block.find_inode(name)
             return Inode.from_index(inode_no, self.object_accessor, self.superblock)
         
         raise FileNotFoundError(f"{path} not found")
