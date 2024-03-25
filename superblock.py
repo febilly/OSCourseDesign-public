@@ -102,6 +102,7 @@ class Superblock(FreeBlockInterface):
         # 清除IALLOC位
         inode = self.object_accessor.inodes[inode_index]
         inode.d_mode.IALLOC = 0
+        inode.flush()
         
         # 如果缓存的空白inode表没装满，就把这个空出来的inode塞进去 
         if self.data.s_ninode < C.INODE_PER_BLOCK:
