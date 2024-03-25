@@ -32,6 +32,10 @@ class Xmp(Fuse):
         self.path = 'disk.img'
         self.disk = Disk("disk.img")
 
+    def fsinit(self):
+        print("Calling fsinit")
+        self.disk.mount()
+        
     def getattr(self, path):
         print("Calling getattr with path:", path)
         return self.disk.get_attr(path)
@@ -64,7 +68,7 @@ class Xmp(Fuse):
     def link(self, path, path1):
         print("Calling link with path:", path, "and path1:", path1)
         self.disk.link(path, path1)
-
+        
     def chmod(self, path, mode):
         print("Calling chmod with path:", path, "and mode:", mode)
         pass
@@ -73,9 +77,23 @@ class Xmp(Fuse):
         print("Calling chown with path:", path, "user:", user, "and group:", group)
         pass
 
+    def create(self, path, flags, mode):
+        print("Calling create with path:", path, "flags:", flags, "and mode:", mode)
+        if mode & S_IFREG:
+            self.disk.create(path, FILE_TYPE.FILE)
+        elif mode & S_IFDIR:
+            self.disk.create(path, FILE_TYPE.DIR)
+        else:
+            raise NotImplementedError
+        
     def mknod(self, path, mode, dev):
         print("Calling mknod with path:", path, "mode:", mode, "and dev:", dev)
-        raise NotImplementedError
+        if mode & S_IFREG:
+            self.disk.create(path, FILE_TYPE.FILE)
+        elif mode & S_IFDIR:
+            self.disk.create(path, FILE_TYPE.DIR)
+        else:
+            raise NotImplementedError
 
     def mkdir(self, path, mode):
         print("Calling mkdir with path:", path, "and mode:", mode)
@@ -88,15 +106,11 @@ class Xmp(Fuse):
 
     def access(self, path, mode):
         print("Calling access with path:", path, "and mode:", mode)
-        pass
+        return 0
 
     def statfs(self):
         print("Calling statfs")
         return self.disk.get_stats()
-
-    def fsinit(self):
-        print("Calling fsinit")
-        self.disk.mount()
 
     def read(self, path, size, offset):
         print("Calling read with path:", path, "size:", size, "and offset:", offset)
@@ -122,6 +136,10 @@ class Xmp(Fuse):
     def fsync(self, path, isfsyncfile):
         print("Calling fsync with path:", path, "and isfsyncfile:", isfsyncfile)
         self.disk.flush()
+
+    def fsdestroy(self, data = None):
+        print("Calling fsdestroy")
+        self.disk.unmount()
 
 def main():
 

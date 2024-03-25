@@ -1,0 +1,14 @@
+Calling getattr with path: /1
+1711390606.33933 : Disk.get_attr(/1)
+1711390606.3393543 : Disk._get_inode(/1)
+1711390606.3393817 : Disk._get_inode(/)
+Calling open with path: /1 and flags: 32769
+Calling truncate with path: /1 and size: 0
+1711390606.3403637 : Disk.truncate(/1, 0)
+1711390606.3403814 : Disk._get_inode(/1)
+1711390606.3404121 : Disk._get_inode(/)
+Calling getattr with path: /1
+1711390606.3419423 : Disk.get_attr(/1)
+1711390606.3419476 : Disk._get_inode(/1)
+1711390606.3419642 : Disk._get_inode(/)
+SystemError: PY_SSIZE_T_CLEAN macro must be defined for '#' formats

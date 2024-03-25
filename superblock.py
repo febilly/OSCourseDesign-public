@@ -14,9 +14,9 @@ class Superblock(FreeBlockInterface):
         # 计算hash，并根据是否是新建磁盘来决定是写入hash，还是校验hash        
         if new:  # 对新磁盘，初始化额外信息
             self._fill_inode()
-            self.data.bfrees = DiskParams.DATA_BLOCK_COUNT
-            self.data.f_files = DiskParams.INODE_COUNT
-            self.data.f_ffree = DiskParams.INODE_COUNT - 1
+            self.data.bfree = DiskParams.DATA_BLOCK_COUNT
+            self.data.files = DiskParams.INODE_COUNT
+            self.data.ffree = DiskParams.INODE_COUNT - 1
             self.flush()
             return
             
@@ -42,22 +42,22 @@ class Superblock(FreeBlockInterface):
                 
     def recount(self) -> None:
         # 计算空闲盘块数
-        self.data.bfrees = self.data.s_nfree
+        self.data.bfree = self.data.s_nfree
         index = self.data.s_free[0]
         while index != 0:
-            self.data.bfrees += self.object_accessor.free_index_blocks[index].s_nfree
+            self.data.bfree += self.object_accessor.free_index_blocks[index].s_nfree
             index = self.object_accessor.free_index_blocks[index].s_free[0]
-        # 最后一个索引块的最后一项是0，并不是有效的空闲块，所以bfrees要减去1
-        self.data.bfrees -= 1
+        # 最后一个索引块的最后一项是0，并不是有效的空闲块，所以bfree要减去1
+        self.data.bfree -= 1
         
         # 写入总inode数
-        self.data.f_files = DiskParams.INODE_COUNT
+        self.data.files = DiskParams.INODE_COUNT
         
         # 计算空闲inode数
-        self.data.f_ffree = 0
+        self.data.ffree = 0
         for i in range(1, DiskParams.INODE_COUNT):
             if not self.object_accessor.inodes[i].d_mode.IALLOC:
-                self.data.f_ffree += 1
+                self.data.ffree += 1
     
     
     @classmethod
@@ -78,7 +78,7 @@ class Superblock(FreeBlockInterface):
             s_ronly = 0,
             s_time = timestamp(),
             
-            bfrees = 0,
+            bfree = 0,
             files = 0,
             ffree = 0,
             hash = 0,
@@ -116,7 +116,7 @@ class Superblock(FreeBlockInterface):
             self.object_accessor.clear_data_block(index)
         
         # print(f"allocate block {index}")
-        self.data.bfrees -= 1
+        self.data.bfree -= 1
         return index
 
     def release_block(self, block_index: int) -> None:
@@ -133,7 +133,7 @@ class Superblock(FreeBlockInterface):
             self.data.s_free[0] = block_index
             
         # print(f"release block {block_index}")
-        self.data.bfrees += 1
+        self.data.bfree += 1
     
     def _fill_inode(self) -> None:
         assert self.data.s_ninode == 0 or self.data.s_ninode == 1 and self.data.s_inode[0] == 0
