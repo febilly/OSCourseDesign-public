@@ -32,11 +32,7 @@ class CacheBlock:
     def modify_bytes(self, start: int, data: bytes) -> None:
         assert start + len(data) <= C.BLOCK_BYTES, f"start: {start} + len(data): {len(data)} > BLOCK_SIZE: {C.BLOCK_BYTES}"
         self.data = self.data[:start] + data + self.data[start + len(data):]
-        if start + len(data) == C.BLOCK_BYTES:
-            self.writer(self.data)
-            self.dirty = False
-        else:
-            self.dirty = True
+        self.dirty = True
             
     def modify_full(self, data: bytes) -> None:
         return self.modify_bytes(0, data)
