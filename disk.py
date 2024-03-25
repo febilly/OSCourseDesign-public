@@ -11,6 +11,7 @@ from utils import get_disk_start
 from format_disk import format_disk
 from dataclasses import dataclass
 import os
+import stat
 
 @dataclass
 class DiskStats:
@@ -25,7 +26,19 @@ class DiskStats:
     f_flag: int
     f_namemax: int
 
-
+@dataclass
+class FileStats():
+    st_mode: int
+    st_ino: int
+    st_dev: int
+    st_nlink: int
+    st_uid: int
+    st_gid: int
+    st_size: int
+    st_atime: int
+    st_mtime: int
+    st_ctime: int
+        
 class Disk:
     def __init__(self, path: str):
         self.path = path
@@ -104,6 +117,27 @@ class Disk:
             return Inode.from_index(inode_no, self.object_accessor, self.superblock)
         
         raise FileNotFoundError(f"{path} not found")
+    
+    def get_attr(self, path: str) -> FileStats:
+        inode = self._get_inode(path)
+        st_mode = 0
+        if inode.file_type == FILE_TYPE.DIR:
+            st_mode |= stat.S_IFDIR
+        else:
+            st_mode |= stat.S_IFREG
+        st_mode |= 0o777
+        return FileStats(
+            st_mode=st_mode,
+            st_ino=inode.index,
+            st_dev=0,
+            st_nlink=inode.data.d_nlink,
+            st_uid=inode.data.d_uid,
+            st_gid=inode.data.d_gid,
+            st_size=inode.size,
+            st_atime=inode.data.d_atime,
+            st_mtime=inode.data.d_mtime,
+            st_ctime=inode.data.d_mtime
+        )
     
     def _add_to_dir(self, parent: Inode, name: str, inode: Inode) -> None:
         position = 0
@@ -294,10 +328,12 @@ class Disk:
         inode.size = max(inode.size, target_size)
         inode.flush()
 
-    def modify_timestamp(self, path: str, atime: int, mtime: int) -> None:
+    def modify_timestamp(self, path: str, atime: int = -1, mtime: int = -1) -> None:
         inode = self._get_inode(path)
-        inode.data.d_atime = atime
-        inode.data.d_mtime = mtime
+        if atime >= 0:
+            inode.data.d_atime = atime
+        if mtime >= 0:
+            inode.data.d_mtime = mtime
         inode.flush()
     
     def format(self):
