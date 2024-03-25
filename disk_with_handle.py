@@ -22,14 +22,14 @@ class DiskWithHandle(Disk):
         file = self.files.get(handle)
         file.offset = offset
 
-    def list_files(self, handle: int) -> list[str]:
+    def dir_list(self, handle: int) -> list[str]:
         file = self.files.get(handle)
-        return super().list_files(file.path)
+        return super().dir_list(file.path)
 
-    def remove_file(self, path: str) -> None:
+    def unlink(self, path: str) -> None:
         if path in self.files:
             self.files.pop(path)
-        super().remove_file(path)
+        super().unlink(path)
             
     def truncate(self, handle: int, new_size: int) -> None:
         file = self.files.get(handle)

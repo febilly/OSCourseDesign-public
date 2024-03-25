@@ -1,6 +1,6 @@
 from block_device import CachedBlockDevice
 import constants as C
-import disk_info as DiskInfo
+import disk_params as DiskParams
 from object_accessor import ObjectAccessor
 from superblock import Superblock
 from inode import Inode, FILE_TYPE
@@ -9,11 +9,41 @@ from dir_block import DirBlock
 from math import ceil
 from utils import get_disk_start
 from format_disk import format_disk
+from dataclasses import dataclass
+import os
+
+@dataclass
+class DiskStats:
+    f_bsize: int
+    f_frsize: int
+    f_blocks: int
+    f_bfree: int
+    f_bavail: int
+    f_files: int
+    f_ffree: int
+    f_favail: int
+    f_flag: int
+    f_namemax: int
+
 
 class Disk:
     def __init__(self, path: str):
         self.path = path
         self.mounted = False
+    
+    def get_stats(self) -> DiskStats:
+        return DiskStats(
+            f_bsize=C.BLOCK_BYTES,
+            f_frsize=C.BLOCK_BYTES,
+            f_blocks=DiskParams.DISK_BLOCKS,
+            f_bfree=self.superblock.data.bfree,
+            f_bavail=self.superblock.data.bfree,
+            f_files=DiskParams.INODE_COUNT,
+            f_ffree=self.superblock.data.ffree,
+            f_favail=self.superblock.data.ffree,
+            f_flag=os.ST_NOSUID,
+            f_namemax=27
+        )
     
     @classmethod
     def new(cls, path: str):
@@ -29,14 +59,14 @@ class Disk:
         
         boot_block = self.block_device.read_block(0)
         disk_start = get_disk_start(boot_block)
-        DiskInfo.init_constants(disk_start=disk_start)
+        DiskParams.init_constants(disk_start=disk_start)
         
         self.object_accessor = ObjectAccessor(self.block_device)
-        self.superblock = Superblock(self.object_accessor.superblock, self.object_accessor)
+        self.superblock = Superblock(self.object_accessor.superblock, self.object_accessor, new=False)
         
         inode_block_size = self.superblock.data.s_isize
         disk_block_size = self.superblock.data.s_fsize
-        DiskInfo.init_constants(disk_start, inode_block_size, disk_block_size)
+        DiskParams.init_constants(disk_start, inode_block_size, disk_block_size)
         
         self.root_inode = Inode.from_index(C.INODE_ROOT_NO, self.object_accessor, self.superblock)
         
@@ -75,7 +105,29 @@ class Disk:
         
         raise FileNotFoundError(f"{path} not found")
     
-    def list_files(self, path: str) -> list[str]:
+    def _add_to_dir(self, parent: Inode, name: str, inode: Inode) -> None:
+        position = 0
+        # 如果父inode的文件索引里面还有空位，就直接添加到空位里
+        for index in parent.block_list():
+            dir_block = DirBlock.from_index(index, self.object_accessor)
+            if dir_block.add(inode.index, name):
+                supposed_size = position + dir_block.length() * C.DIRECTORY_BYTES
+                if supposed_size > parent.size:
+                    parent.size = supposed_size
+                    parent.flush()
+                return
+            position += C.DATA_BLOCK_BYTES
+
+        # 没有空位，因此我们新建一个目录块
+        new_block_index = self.superblock.allocate_block()
+        dir_block = DirBlock.new(new_block_index, self.object_accessor)
+        dir_block.add(inode.index, name)
+        
+        parent.push_block(new_block_index)
+        parent.size += C.DIRECTORY_BYTES
+        parent.flush()
+
+    def dir_list(self, path: str) -> list[str]:
         inode = self._get_inode(path)
         if inode.file_type != FILE_TYPE.DIR:
             raise FileNotFoundError(f"{path} is not a directory")
@@ -94,7 +146,7 @@ class Disk:
             return False
         return True
     
-    def create_file(self, path: str, type: FILE_TYPE) -> Inode:
+    def create(self, path: str, type: FILE_TYPE) -> Inode:
         if self.exists(path):
             raise FileExistsError(f"{path} already exists")
 
@@ -108,32 +160,13 @@ class Disk:
         inode.data.d_nlink = 1
         inode.flush()
         
+        # 添加到父文件夹里
         parent = self._get_inode(parent_path)
-
-        position = 0
-        # 如果父inode的文件索引里面还有空位，就直接添加到空位里
-        for index in parent.block_list():
-            dir_block = DirBlock.from_index(index, self.object_accessor)
-            if dir_block.add(inode.index, name):
-                supposed_size = position + dir_block.length() * C.DIRECTORY_BYTES
-                if supposed_size > parent.size:
-                    parent.size = supposed_size
-                    parent.flush()
-                return inode
-            position += C.DATA_BLOCK_BYTES
-
-        # 没有空位，因此我们新建一个目录块
-        new_block_index = self.superblock.allocate_block()
-        dir_block = DirBlock.new(new_block_index, self.object_accessor)
-        dir_block.add(inode.index, name)
-        
-        parent.push_block(new_block_index)
-        parent.size += C.DIRECTORY_BYTES
-        parent.flush()
+        self._add_to_dir(parent, name, inode)
         
         return inode
     
-    def remove_file(self, path: str) -> None:
+    def unlink(self, path: str) -> None:
         inode = self._get_inode(path)
         inode.data.d_nlink -= 1
         
@@ -142,8 +175,8 @@ class Disk:
             self.superblock.release_inode(inode.index)
             # 如果path是文件夹，那还要移除所有子文件
             if inode.file_type == FILE_TYPE.DIR:
-                for name in self.list_files(path):
-                    self.remove_file(os.path.join(path, name))
+                for name in self.dir_list(path):
+                    self.unlink(os.path.join(path, name))
         else:
             inode.flush()
 
@@ -157,7 +190,23 @@ class Disk:
                 continue
             dir_block.remove(name)
             return
-    
+
+    def link(self, src: str, dst: str) -> None:
+        inode = self._get_inode(src)
+        if self.exists(dst):
+            raise FileExistsError(f"{dst} already exists")
+        
+        parent_path, name = os.path.split(dst)
+        parent = self._get_inode(parent_path)
+        
+        # 添加到父文件夹里
+        parent = self._get_inode(parent_path)
+        self._add_to_dir(parent, name, inode)
+
+    def rename(self, src: str, dst: str) -> None:
+        self.link(src, dst)
+        self.unlink(src)
+
     def truncate(self, path: str, new_size: int) -> None:
         inode = self._get_inode(path)
         if inode.file_type != FILE_TYPE.FILE:
@@ -245,6 +294,11 @@ class Disk:
         inode.size = max(inode.size, target_size)
         inode.flush()
 
+    def modify_timestamp(self, path: str, atime: int, mtime: int) -> None:
+        inode = self._get_inode(path)
+        inode.data.d_atime = atime
+        inode.data.d_mtime = mtime
+        inode.flush()
     
     def format(self):
         self.unmount()

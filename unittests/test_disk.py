@@ -25,37 +25,37 @@ class NewDiskTestCase(unittest.TestCase):
     def setUp(self):
         self.disk = Disk.new(IMG)
         self.disk.mount()
-        self.disk.create_file(DIR, FILE_TYPE.DIR)
-        self.disk.create_file(FILE, FILE_TYPE.FILE)
+        self.disk.create(DIR, FILE_TYPE.DIR)
+        self.disk.create(FILE, FILE_TYPE.FILE)
 
     def tearDown(self):
         self.disk.unmount()
 
     def test_create_directory(self):
-        self.disk.create_file(D1, FILE_TYPE.DIR)
+        self.disk.create(D1, FILE_TYPE.DIR)
         self.assertTrue(self.disk.exists(D1))
 
     def test_create_file(self):
-        self.disk.create_file(F1, FILE_TYPE.FILE)
+        self.disk.create(F1, FILE_TYPE.FILE)
         self.assertTrue(self.disk.exists(F1))
 
-    def test_remove_file(self):
-        self.disk.create_file(F1, FILE_TYPE.FILE)
+    def test_unlink_file(self):
+        self.disk.create(F1, FILE_TYPE.FILE)
         self.assertTrue(self.disk.exists(F1))
-        self.disk.remove_file(F1)
+        self.disk.unlink(F1)
         self.assertFalse(self.disk.exists(F1))
 
     def test_remove_dir(self):
-        self.disk.create_file(D1, FILE_TYPE.DIR)
+        self.disk.create(D1, FILE_TYPE.DIR)
         self.assertTrue(self.disk.exists(D1))
-        self.disk.create_file(D1F1, FILE_TYPE.FILE)
+        self.disk.create(D1F1, FILE_TYPE.FILE)
         self.assertTrue(self.disk.exists(D1F1))
-        self.disk.create_file(D1D2, FILE_TYPE.DIR)
+        self.disk.create(D1D2, FILE_TYPE.DIR)
         self.assertTrue(self.disk.exists(D1D2))
-        self.disk.create_file(D1D2F1, FILE_TYPE.FILE)
+        self.disk.create(D1D2F1, FILE_TYPE.FILE)
         self.assertTrue(self.disk.exists(D1D2F1))
         
-        self.disk.remove_file(D1)
+        self.disk.unlink(D1)
         self.assertFalse(self.disk.exists(D1))
         self.assertFalse(self.disk.exists(D1F1))
         self.assertFalse(self.disk.exists(D1D2))

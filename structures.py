@@ -17,7 +17,13 @@ SuperBlockStruct = Struct(
     "s_fmod" / Int32ul,
     "s_ronly" / Int32ul,
     "s_time" / Int32ul,
-    Padding(4 * 47),  # 填充到1024字节
+    Padding(4 * 38),  # 填充到1024字节
+    
+    "bfree" / Int32ul,
+    "files" / Int32ul,
+    "ffree" / Int32ul,
+    "hash" / Bytes(8),
+    "magic" / Bytes(8),
 )
 assert SuperBlockStruct.sizeof() == C.SUPERBLOCK_BYTES
 
