@@ -3,6 +3,7 @@ from construct import Container
 import constants as C
 import disk_info as DiskInfo
 from free_block_interface import FreeBlockInterface
+from utils import timestamp
 
 
 class Superblock(FreeBlockInterface):
@@ -15,7 +16,28 @@ class Superblock(FreeBlockInterface):
         if self.data.s_ninode > C.SUPERBLOCK_FREE_INODE or self.data.s_ninode <= 0:
             self.data.s_ninode = 0
             self._fill_inode()
+        
+    @classmethod
+    def new(cls, object_accessor: ObjectAccessor):
+        data = Container(
+            s_isize = DiskInfo.INODE_BLOCK_SIZE,
+            s_fsize = DiskInfo.DISK_BLOCK_SIZE,
             
+            s_nfree = 0,
+            s_free = [0] * C.SUPERBLOCK_FREE_BLOCK,
+            s_flock = 0,
+            
+            s_ninode = 0,
+            s_inode = [0] * C.SUPERBLOCK_FREE_INODE,
+            s_ilock = 0,
+            
+            s_fmod = 0,
+            s_ronly = 0,
+            s_time = timestamp())
+        object = cls(data, object_accessor)
+        object._fill_inode(1)
+        return object
+        
     def flush(self) -> None:
         self.object_accessor.superblock = self.data
     
@@ -52,9 +74,9 @@ class Superblock(FreeBlockInterface):
             
         print(f"release block {block_index}")
     
-    def _fill_inode(self) -> None:
+    def _fill_inode(self, start: int = 0) -> None:
         assert self.data.s_ninode == 0
-        for index in range(DiskInfo.INODE_COUNT):
+        for index in range(start, DiskInfo.INODE_COUNT):
             if self.object_accessor.inodes[index].d_mode.IALLOC:
                 continue
             self.data.s_inode[self.data.s_ninode] = index

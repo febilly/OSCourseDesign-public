@@ -8,12 +8,23 @@ import os
 from dir_block import DirBlock
 from math import ceil
 from utils import get_disk_start
+from format_disk import format_disk
 
 class Disk:
     def __init__(self, path: str):
         self.path = path
-        
+        self.mounted = False
+    
+    @classmethod
+    def new(cls, path: str):
+        format_disk(path, init_params=True)
+        disk = cls(path)
+        return disk
+    
     def mount(self):
+        if self.mounted:
+            return
+        
         self.block_device = CachedBlockDevice(self.path)
         
         boot_block = self.block_device.read_block(0)
@@ -29,14 +40,19 @@ class Disk:
         
         self.root_inode = Inode.from_index(C.INODE_ROOT_NO, self.object_accessor, self.superblock)
         
+        self.mounted = True
+        
     def flush(self):
         self.superblock.flush()
         self.root_inode.flush()
         self.block_device.flush()
     
     def unmount(self):
+        if not self.mounted:
+            return
         self.flush()
         self.block_device.close()
+        self.mounted = False
 
     def _get_inode(self, path: str) -> Inode:
         if path == '/':
@@ -71,12 +87,15 @@ class Disk:
         
         return result
     
-    def create_file(self, path: str, type: FILE_TYPE) -> Inode:
+    def exists(self, path: str) -> bool:
         try:
             self._get_inode(path)
         except FileNotFoundError:
-            pass
-        else:
+            return False
+        return True
+    
+    def create_file(self, path: str, type: FILE_TYPE) -> Inode:
+        if self.exists(path):
             raise FileExistsError(f"{path} already exists")
 
         parent_path, name = os.path.split(path)
@@ -232,7 +251,9 @@ class Disk:
 
     
     def format(self):
-        pass
+        self.unmount()
+        format_disk(self.path)
+        self.mount()
     
     @property
     def inode_size(self) -> int:
