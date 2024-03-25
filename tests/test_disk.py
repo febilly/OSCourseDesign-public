@@ -10,12 +10,16 @@ FILE = '/unittestdir/newfile1'
 
 D1 = '/unittestdir/newdir1'
 D2 = '/unittestdir/newdir2'
-D3 = '/unittestdir/newdir3'
 
 F1 = '/unittestdir/newfile1'
 F2 = '/unittestdir/newfile2'
-F3 = '/unittestdir/newfile3'
 
+D1F1 = '/unittestdir/newdir1/newfile1'
+D1F2 = '/unittestdir/newdir1/newfile2'
+
+D1D2 = '/unittestdir/newdir1/newdir2'
+D1D2F1 = '/unittestdir/newdir1/newdir2/newfile1'
+D1D2F2 = '/unittestdir/newdir1/newdir2/newfile2'
 
 class NewDiskTestCase(unittest.TestCase):
     def setUp(self):
@@ -37,16 +41,31 @@ class NewDiskTestCase(unittest.TestCase):
 
     def test_remove_file(self):
         self.disk.create_file(F1, FILE_TYPE.FILE)
-        self.assertTrue(self.disk.exists(FILE_PATH))
-        self.disk.remove_file(FILE_PATH)
-        self.assertFalse(self.disk.exists(FILE_PATH))
+        self.assertTrue(self.disk.exists(F1))
+        self.disk.remove_file(F1)
+        self.assertFalse(self.disk.exists(F1))
 
+    def test_remove_dir(self):
+        self.disk.create_file(D1, FILE_TYPE.DIR)
+        self.assertTrue(self.disk.exists(D1))
+        self.disk.create_file(D1F1, FILE_TYPE.FILE)
+        self.assertTrue(self.disk.exists(D1F1))
+        self.disk.create_file(D1D2, FILE_TYPE.DIR)
+        self.assertTrue(self.disk.exists(D1D2))
+        self.disk.create_file(D1D2F1, FILE_TYPE.FILE)
+        self.assertTrue(self.disk.exists(D1D2F1))
+        
+        self.disk.remove_file(D1)
+        self.assertFalse(self.disk.exists(D1))
+        self.assertFalse(self.disk.exists(D1F1))
+        self.assertFalse(self.disk.exists(D1D2))
+        self.assertFalse(self.disk.exists(D1D2F1))
+        
     def test_truncate_file(self):
-        FILE_PATH = '/unittestdir/newfile1'
-        self.disk.create_file(FILE_PATH, FILE_TYPE.FILE)
-        self.disk.write_file(FILE_PATH, 0, b'This is a test file')
-        self.disk.truncate(FILE_PATH, 10)
-        data = self.disk.read_file(FILE_PATH, 0, -1)
+        self.disk.create_file(F1, FILE_TYPE.FILE)
+        self.disk.write_file(F1, 0, b'This is a test file')
+        self.disk.truncate(F1, 10)
+        data = self.disk.read_file(F1, 0, -1)
         self.assertEqual(data, b'This is a ')
 
     def test_write_and_read_large_file(self):
