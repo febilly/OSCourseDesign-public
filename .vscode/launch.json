@@ -5,6 +5,14 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "mount",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "mount.py",
+            "console": "integratedTerminal",
+            "args": "-f /unix"
+        },
+        {
             "name": "main.py",
             "type": "debugpy",
             "request": "launch",

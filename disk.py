@@ -10,7 +10,7 @@ from math import ceil
 from utils import get_disk_start
 from format_disk import format_disk
 from dataclasses import dataclass
-import os
+import os, errno
 import stat
 
 @dataclass
@@ -45,6 +45,8 @@ class Disk:
         self.mounted = False
     
     def get_stats(self) -> DiskStats:
+        print("get_stats() called")
+        print(self.superblock.data.bfree, self.superblock.data.ffree)
         return DiskStats(
             f_bsize=C.BLOCK_BYTES,
             f_frsize=C.BLOCK_BYTES,
@@ -60,11 +62,13 @@ class Disk:
     
     @classmethod
     def new(cls, path: str):
+        print("new() called")
         format_disk(path, init_params=True)
         disk = cls(path)
         return disk
     
     def mount(self):
+        print("mount() called")
         if self.mounted:
             return
         
@@ -86,11 +90,13 @@ class Disk:
         self.mounted = True
         
     def flush(self):
+        print("flush() called")
         self.superblock.flush()
         self.root_inode.flush()
         self.block_device.flush()
     
     def unmount(self):
+        print("unmount() called")
         if not self.mounted:
             return
         self.flush()
@@ -98,6 +104,7 @@ class Disk:
         self.mounted = False
 
     def _get_inode(self, path: str) -> Inode:
+        print("_get_inode() called")
         if path == '/':
             return self.root_inode
 
@@ -107,7 +114,7 @@ class Disk:
         if name == '':
             return parent
         if parent.file_type != FILE_TYPE.DIR:
-            raise FileNotFoundError(f"{path} is not a directory")
+            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
         
         for index in parent.block_list():
             dir_block = DirBlock.from_index(index, self.object_accessor)
@@ -116,9 +123,10 @@ class Disk:
             inode_no = dir_block.find_inode(name)
             return Inode.from_index(inode_no, self.object_accessor, self.superblock)
         
-        raise FileNotFoundError(f"{path} not found")
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
     
     def get_attr(self, path: str) -> FileStats:
+        print("get_attr() called")
         inode = self._get_inode(path)
         st_mode = 0
         if inode.file_type == FILE_TYPE.DIR:
@@ -140,6 +148,7 @@ class Disk:
         )
     
     def _add_to_dir(self, parent: Inode, name: str, inode: Inode) -> None:
+        print("_add_to_dir() called")
         position = 0
         # 如果父inode的文件索引里面还有空位，就直接添加到空位里
         for index in parent.block_list():
@@ -162,9 +171,10 @@ class Disk:
         parent.flush()
 
     def dir_list(self, path: str) -> list[str]:
+        print("dir_list() called")
         inode = self._get_inode(path)
         if inode.file_type != FILE_TYPE.DIR:
-            raise FileNotFoundError(f"{path} is not a directory")
+            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
         
         result = []
         for index in inode.block_list():
@@ -174,6 +184,7 @@ class Disk:
         return result
     
     def exists(self, path: str) -> bool:
+        print("exists() called")
         try:
             self._get_inode(path)
         except FileNotFoundError:
@@ -181,12 +192,13 @@ class Disk:
         return True
     
     def create(self, path: str, type: FILE_TYPE) -> Inode:
+        print("create() called")
         if self.exists(path):
             raise FileExistsError(f"{path} already exists")
 
         parent_path, name = os.path.split(path)
         if name == '':
-            raise FileNotFoundError("File name is empty")
+            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
         
         # 创建新的文件（夹）的inode
         inode_index = self.superblock.allocate_inode()
@@ -201,6 +213,7 @@ class Disk:
         return inode
     
     def unlink(self, path: str) -> None:
+        print("unlink() called")
         inode = self._get_inode(path)
         inode.data.d_nlink -= 1
         
@@ -226,6 +239,7 @@ class Disk:
             return
 
     def link(self, src: str, dst: str) -> None:
+        print("link() called")
         inode = self._get_inode(src)
         if self.exists(dst):
             raise FileExistsError(f"{dst} already exists")
@@ -238,13 +252,15 @@ class Disk:
         self._add_to_dir(parent, name, inode)
 
     def rename(self, src: str, dst: str) -> None:
+        print("rename() called")
         self.link(src, dst)
         self.unlink(src)
 
     def truncate(self, path: str, new_size: int) -> None:
+        print("truncate() called")
         inode = self._get_inode(path)
         if inode.file_type != FILE_TYPE.FILE:
-            raise FileNotFoundError(f"{path} is not a file")
+            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
         
         target_blockcount = ceil(new_size / C.BLOCK_BYTES)
         while inode.block_count < target_blockcount:
@@ -267,6 +283,7 @@ class Disk:
         inode.flush()
     
     def read_file(self, path: str, offset: int, size: int) -> bytes:
+        print("read_file() called")
         inode = self._get_inode(path)
         offset = max(offset, 0)
         if size < 0:
@@ -275,7 +292,7 @@ class Disk:
             size = min(size, inode.size - offset)
         
         if inode.file_type != FILE_TYPE.FILE:
-            raise FileNotFoundError(f"{path} is not a file")
+            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
         
         start_block_index = offset // C.BLOCK_BYTES
         position = offset % C.BLOCK_BYTES
@@ -292,6 +309,7 @@ class Disk:
         return result
     
     def write_file(self, path: str, offset: int, data: bytes) -> None:
+        print("write_file() called")
         inode = self._get_inode(path)
         if offset < 0:
             offset = inode.size
@@ -329,6 +347,7 @@ class Disk:
         inode.flush()
 
     def modify_timestamp(self, path: str, atime: int = -1, mtime: int = -1) -> None:
+        print("modify_timestamp() called")
         inode = self._get_inode(path)
         if atime >= 0:
             inode.data.d_atime = atime
@@ -337,6 +356,7 @@ class Disk:
         inode.flush()
     
     def format(self):
+        print("format() called")
         self.unmount()
         format_disk(self.path)
         self.mount()

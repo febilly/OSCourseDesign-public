@@ -14,6 +14,9 @@ class Superblock(FreeBlockInterface):
         # 计算hash，并根据是否是新建磁盘来决定是写入hash，还是校验hash        
         if new:  # 对新磁盘，初始化额外信息
             self._fill_inode()
+            self.data.bfrees = DiskParams.DATA_BLOCK_COUNT
+            self.data.f_files = DiskParams.INODE_COUNT
+            self.data.f_ffree = DiskParams.INODE_COUNT - 1
             self.flush()
             return
             
@@ -33,6 +36,11 @@ class Superblock(FreeBlockInterface):
             self.data.s_ninode = 0
             self._fill_inode()
         
+        self.recount()
+        print("重新计算完毕。")
+        self.flush()
+                
+    def recount(self) -> None:
         # 计算空闲盘块数
         self.data.bfrees = self.data.s_nfree
         index = self.data.s_free[0]
@@ -50,11 +58,8 @@ class Superblock(FreeBlockInterface):
         for i in range(1, DiskParams.INODE_COUNT):
             if not self.object_accessor.inodes[i].d_mode.IALLOC:
                 self.data.f_ffree += 1
-        
-        print("重新计算完毕。")
-        self.flush()
-                
-        
+    
+    
     @classmethod
     def new(cls, object_accessor: ObjectAccessor):
         data = Container(

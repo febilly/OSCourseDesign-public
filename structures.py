@@ -17,7 +17,7 @@ SuperBlockStruct = Struct(
     "s_fmod" / Int32ul,
     "s_ronly" / Int32ul,
     "s_time" / Int32ul,
-    Padding(4 * 38),  # 填充到1024字节
+    Padding(4 * 40),  # 填充到1024字节
     
     "bfree" / Int32ul,
     "files" / Int32ul,
