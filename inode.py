@@ -140,7 +140,10 @@ class Inode:
             length = self.block_count - start_block
         else:
             length = min(length, self.block_count - start_block)
-            
+        
+        if length <= 0:
+            return
+        
         for block_index in self._block_list(start_block):
             yield block_index
             length -= 1
