@@ -148,7 +148,7 @@ class Passthrough(Operations):
 
 
 def main(mountpoint, image_path):
-    FUSE(Passthrough(image_path), mountpoint, nothreads=True, foreground=True, allow_other=True)
+    FUSE(Passthrough(image_path), mountpoint, nothreads=True, foreground=False, allow_other=True)
 
 
 if __name__ == '__main__':
