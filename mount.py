@@ -126,6 +126,7 @@ class Xmp(Fuse):
         return length
 
     def release(self, path, flags):
+        print("\nCalling release with path:", path, "and flags:", flags)
         return 0
 
     def open(self, path, flags):
