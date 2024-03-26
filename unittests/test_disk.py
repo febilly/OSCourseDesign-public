@@ -78,6 +78,15 @@ class NewDiskTestCase(unittest.TestCase):
         self.disk.write_file(FILE, -1, content)
         data = self.disk.read_file(FILE, -1, -1)
         self.assertEqual(data, content)
+        
+    def test_truncate_and_write_file(self):
+        self.disk.write_file(FILE, 0, b'This is a test file')
+        self.disk.truncate(FILE, 0)
+        data = self.disk.read_file(FILE, 0, -1)
+        self.assertEqual(data, b'')
+        self.disk.write_file(FILE, 0, b'aaaa')
+        data = self.disk.read_file(FILE, 0, -1)
+        self.assertEqual(data, b'aaaa')
 
 if __name__ == '__main__':
     unittest.main()

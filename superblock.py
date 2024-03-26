@@ -83,7 +83,7 @@ class Superblock(FreeBlockInterface):
             ffree = 0,
             hash = 0,
             magic = 0,)
-        object = cls(data, object_accessor, new=False)
+        object = cls(data, object_accessor, new=True)
         return object
         
     def flush(self) -> None:

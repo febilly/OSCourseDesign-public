@@ -39,6 +39,9 @@ class FileStats():
     st_atime: int
     st_mtime: int
     st_ctime: int
+    
+    def __repr__(self):
+        return f"FileStats(st_mode={self.st_mode}, st_ino={self.st_ino}, st_dev={self.st_dev}, st_nlink={self.st_nlink}, st_uid={self.st_uid}, st_gid={self.st_gid}, st_size={self.st_size}, st_atime={self.st_atime}, st_mtime={self.st_mtime}, st_ctime={self.st_ctime})"
 
 start_time = time.time()
 def time_print(text: str):
