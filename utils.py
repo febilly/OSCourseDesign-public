@@ -1,12 +1,12 @@
 import constants as C
-from time import time
+import time
 from datetime import datetime
 import hashlib
 from structures import SuperBlockStruct
 from construct import Container
 
 def timestamp() -> int:
-    return int(time())
+    return int(time.time())
 
 def timestr(timestamp: int) -> str:
     return datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
@@ -32,3 +32,7 @@ def get_superblock_hash(superblock: bytes) -> bytes:
     hash = hashlib.sha256(data).digest()
     return bytes_or(hash[:8], C.MAGIC)
 
+start_time = time.time()
+def debug_print(text: str):
+    if C.OUTPUT_LOG:
+        print(f"{time.time() - start_time:.2f} : {text}")
