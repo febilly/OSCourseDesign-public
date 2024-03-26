@@ -26,6 +26,9 @@ class DiskStats:
     f_favail: int
     f_flag: int
     f_namemax: int
+    
+    def items(self):
+        return self.__dict__.items()
 
 @dataclass
 class FileStats():
@@ -39,7 +42,10 @@ class FileStats():
     st_atime: int
     st_mtime: int
     st_ctime: int
-    
+
+    def items(self):
+        return self.__dict__.items()
+
     def __repr__(self):
         return f"FileStats(st_mode={self.st_mode}, st_ino={self.st_ino}, st_dev={self.st_dev}, st_nlink={self.st_nlink}, st_uid={self.st_uid}, st_gid={self.st_gid}, st_size={self.st_size}, st_atime={self.st_atime}, st_mtime={self.st_mtime}, st_ctime={self.st_ctime})"
 
@@ -54,7 +60,6 @@ class Disk:
     
     def get_stats(self) -> DiskStats:
         time_print(f"Disk.get_stats()")
-        time_print(self.superblock.data.bfree, self.superblock.data.ffree)
         return DiskStats(
             f_bsize=C.BLOCK_BYTES,
             f_frsize=C.BLOCK_BYTES,
@@ -320,7 +325,7 @@ class Disk:
         return result
     
     def write_file(self, path: str, offset: int, data: bytes) -> None:
-        time_print(f"Disk.write_file({path}, {offset}, {data})")
+        time_print(f"Disk.write_file({path}, {offset}, (data omitted for performance reason) )")
         inode = self._get_inode(path)
         if offset < 0:
             offset = inode.size

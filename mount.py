@@ -1,167 +1,155 @@
-import os, sys
-from errno import *
-from stat import *
-import fcntl
-from threading import Lock
+#!/usr/bin/env python
 
-import fuse
-from fuse import Fuse
+from __future__ import with_statement
+
+import os
+import sys
+import errno
+import time
+import stat
+
+from fuse import FUSE, FuseOSError, Operations, fuse_get_context
 
 from disk import Disk
 from inode import FILE_TYPE
 
-fuse.fuse_python_api = (0, 2)
 
-fuse.feature_assert('stateful_files', 'has_init')
-
-
-def flag2mode(flags):
-    md = {os.O_RDONLY: 'rb', os.O_WRONLY: 'wb', os.O_RDWR: 'wb+'}
-    m = md[flags & (os.O_RDONLY | os.O_WRONLY | os.O_RDWR)]
-
-    if flags | os.O_APPEND:
-        m = m.replace('w', 'a', 1)
-
-    return m
-
-
-class Xmp(Fuse):
-
-    def __init__(self, *args, **kw):
-        Fuse.__init__(self, *args, **kw)
-        self.path = 'disk.img'
-        self.disk = Disk("disk.img")
-
-    def fsinit(self):
-        print("\nCalling fsinit")
+class Passthrough(Operations):
+    def __init__(self, image_path):
+        self.image_path = image_path
+        assert os.path.exists(image_path)
+        self.disk = Disk(image_path)
         self.disk.mount()
+
+    # Filesystem methods
+    # ==================
+
+    def destroy(self, path = None):
+        print("\nCalling fsdestroy")
+        self.disk.unmount()
         
-    def getattr(self, path):
+    def access(self, path, mode):
+        print("\nCalling access with path:", path, "and mode:", mode)
+        return 0
+
+    def chmod(self, path, mode):
+        print("\nCalling chmod with path:", path, "and mode:", mode)
+        pass
+
+    def chown(self, path, uid, gid):
+        print("\nCalling chown with path:", path, "uid:", uid, "and gid:", gid)
+        pass
+
+    def getattr(self, path, fh=None):
         print("\nCalling getattr with path:", path)
         result = self.disk.get_attr(path)
         print(result)
         return result
 
+    def readdir(self, path, fh):
+        print("\nCalling readdir with path:", path, "and fh:", fh)
+        for e in self.disk.dir_list(path):
+            yield e
+
     def readlink(self, path):
         print("\nCalling readlink with path:", path)
         raise NotImplementedError
-
-    def readdir(self, path, offset):
-        print("\nCalling readdir with path:", path, "and offset:", offset)
-        for e in self.disk.dir_list(path):
-            yield fuse.Direntry(e)
-
-    def unlink(self, path):
-        print("\nCalling unlink with path:", path)
-        self.disk.unlink(path)
+    
+    def mknod(self, path, mode, dev):
+        print("\nCalling mknod with path:", path, "mode:", mode, "and dev:", dev)
+        if mode & stat.S_IFREG:
+            self.disk.create(path, FILE_TYPE.FILE)
+        elif mode & stat.S_IFDIR:
+            self.disk.create(path, FILE_TYPE.DIR)
+        else:
+            raise NotImplementedError
 
     def rmdir(self, path):
         print("\nCalling rmdir with path:", path)
         self.disk.unlink(path)
 
-    def symlink(self, path, path1):
-        print("\nCalling symlink with path:", path, "and path1:", path1)
-        raise NotImplementedError
-
-    def rename(self, path, path1):
-        print("\nCalling rename with path:", path, "and path1:", path1)
-        self.disk.rename(path, path1)
-
-    def link(self, path, path1):
-        print("\nCalling link with path:", path, "and path1:", path1)
-        self.disk.link(path, path1)
-        
-    def chmod(self, path, mode):
-        print("\nCalling chmod with path:", path, "and mode:", mode)
-        pass
-
-    def chown(self, path, user, group):
-        print("\nCalling chown with path:", path, "user:", user, "and group:", group)
-        pass
-
-    def create(self, path, flags, mode):
-        print("\nCalling create with path:", path, "flags:", flags, "and mode:", mode)
-        if mode & S_IFREG:
-            self.disk.create(path, FILE_TYPE.FILE)
-        elif mode & S_IFDIR:
-            self.disk.create(path, FILE_TYPE.DIR)
-        else:
-            raise NotImplementedError
-        
-    def mknod(self, path, mode, dev):
-        print("\nCalling mknod with path:", path, "mode:", mode, "and dev:", dev)
-        if mode & S_IFREG:
-            self.disk.create(path, FILE_TYPE.FILE)
-        elif mode & S_IFDIR:
-            self.disk.create(path, FILE_TYPE.DIR)
-        else:
-            raise NotImplementedError
-
     def mkdir(self, path, mode):
         print("\nCalling mkdir with path:", path, "and mode:", mode)
         self.disk.create(path, FILE_TYPE.DIR)
 
-    def utime(self, path, times):
-        print("\nCalling utime with path:", path, "and times:", times)
-        atime, mtime = times
-        self.disk.modify_timestamp(path, atime, mtime)
-
-    def access(self, path, mode):
-        print("\nCalling access with path:", path, "and mode:", mode)
-        return 0
-
-    def statfs(self):
+    def statfs(self, path):
         print("\nCalling statfs")
         return self.disk.get_stats()
 
-    def read(self, path, size, offset):
-        print("\nCalling read with path:", path, "size:", size, "and offset:", offset)
-        return self.disk.read_file(path, offset, size)
+    def unlink(self, path):
+        print("\nCalling unlink with path:", path)
+        self.disk.unlink(path)
 
-    def write(self, path, buf, offset):
-        print("\nCalling write with path:", path, "buf:", buf, "and offset:", offset)
-        length = len(buf)
-        print("\nbuf length:", length)
-        self.disk.write_file(path, buf, offset)
-        return length
+    def symlink(self, name, target):
+        print("\nCalling symlink with name:", name, "and target:", target)
+        raise NotImplementedError
 
-    def release(self, path, flags):
-        print("\nCalling release with path:", path, "and flags:", flags)
-        return 0
+    def rename(self, old, new):
+        print("\nCalling rename with old:", old, "and new:", new)
+        self.disk.rename(old, new)
+
+    def link(self, target, name):
+        print("\nCalling link with target:", target, "and name:", name)
+        self.disk.link(target, name)
+
+    def utimens(self, path, times=None):
+        print("\nCalling utime with path:", path, "and times:", times)
+        if times:
+            atime, mtime = times
+        else:
+            atime = mtime = time.time()
+            
+        atime, mtime = int(atime), int(mtime)
+        self.disk.modify_timestamp(path, atime, mtime)
+
+    # File methods
+    # ============
 
     def open(self, path, flags):
         print("\nCalling open with path:", path, "and flags:", flags)
         return 0
 
-    def truncate(self, path, size):
-        print("\nCalling truncate with path:", path, "and size:", size)
-        self.disk.truncate(path, size)
+    def create(self, path, mode, fi=None):
+        print("\nCalling create with path:", path, "and mode:", mode)
+        if mode & stat.S_IFREG:
+            return self.disk.create(path, FILE_TYPE.FILE).index
+        elif mode & stat.S_IFDIR:
+            return self.disk.create(path, FILE_TYPE.DIR).index
+        else:
+            raise NotImplementedError
 
-    def fsync(self, path, isfsyncfile):
-        print("\nCalling fsync with path:", path, "and isfsyncfile:", isfsyncfile)
+    def read(self, path, length, offset, fh):
+        print("\nCalling read with path:", path, "length:", length, "and offset:", offset)
+        return self.disk.read_file(path, offset, length)
+
+    def write(self, path, buf, offset, fh):
+        print("\nCalling write with path:", path, "buf:", "(omitted for performance reason)", "and offset:", offset)
+        length = len(buf)
+        print("buf length:", length)
+        self.disk.write_file(path, offset, buf)
+        return length
+
+    def truncate(self, path, length, fh=None):
+        print("\nCalling truncate with path:", path, "and length:", length, "and fh:", fh)
+        self.disk.truncate(path, length)
+
+    def flush(self, path, fh):
+        print("\nCalling flush with path:", path, "and fh:", fh)
+        # self.disk.flush()
+        return 0
+
+    def release(self, path, fh):
+        print("\nCalling release with path:", path, "and fh:", fh)
+        return 0
+
+    def fsync(self, path, fdatasync, fh):
+        print("\nCalling fsync with path:", path, "and fdatasync:", fdatasync, "and fh:", fh)
         self.disk.flush()
 
-    def flush(self, path):
-        print("\nCalling flush with path:", path)
-        self.disk.flush()
 
-    def fsdestroy(self, data = None):
-        print("\nCalling fsdestroy")
-        self.disk.unmount()
-
-def main():
-
-    usage = """
-实现了一个UNIX V6++文件系统。
-
-""" + Fuse.fusage
-
-    server = Xmp(version="%prog " + fuse.__version__,
-                 usage=usage, dash_s_do='setsingle')
-
-    server.parse(values=server, errex=1)
-    server.main()
+def main(mountpoint, image_path):
+    FUSE(Passthrough(image_path), mountpoint, nothreads=True, foreground=True, allow_other=True)
 
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[2], sys.argv[1])
