@@ -33,6 +33,7 @@ def get_superblock_hash(superblock: bytes) -> bytes:
     return bytes_or(hash[:8], C.MAGIC)
 
 start_time = time.time()
-def debug_print(text: str):
+def debug_print(*args):
     if C.OUTPUT_LOG:
+        text = " ".join(str(arg) for arg in args)
         print(f"{time.time() - start_time:.2f} : {text}")

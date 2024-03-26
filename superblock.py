@@ -5,6 +5,7 @@ import disk_params as DiskParams
 from free_block_interface import FreeBlockInterface
 from utils import timestamp, get_superblock_hash
 from structures import SuperBlockStruct
+from utils import debug_print
 
 class Superblock(FreeBlockInterface):
     def __init__(self, data: Container, object_accessor: ObjectAccessor, new: bool = True):
@@ -25,10 +26,10 @@ class Superblock(FreeBlockInterface):
         hash = get_superblock_hash(encoded)
         if self.data.hash == hash:
             # 如果此磁盘上一次是用本程序读写的，那就不需要再计算空闲盘块数啥的了
-            print("找到附加信息。")
+            debug_print("找到附加信息。")
             return
         
-        print("未找到附加信息，将重新计算...")
+        debug_print("未找到附加信息，将重新计算...")
         
         # 我也不知道为啥那个c.img里面s_ninode会大于100......
         # 我读了superblock一看，s_ninode是六千多，人都给我看傻了
@@ -37,7 +38,7 @@ class Superblock(FreeBlockInterface):
             self._fill_inode()
         
         self.recount()
-        print("重新计算完毕。")
+        debug_print("重新计算完毕。")
         self.flush()
                 
     def recount(self) -> None:
@@ -115,7 +116,7 @@ class Superblock(FreeBlockInterface):
         if zero:  # 是否清零
             self.object_accessor.clear_data_block(index)
         
-        # print(f"allocate block {index}")
+        # debug_print(f"allocate block {index}")
         self.data.bfree -= 1
         return index
 
@@ -132,7 +133,7 @@ class Superblock(FreeBlockInterface):
             self.data.s_free = [0] * C.FREE_INDEX_PER_BLOCK
             self.data.s_free[0] = block_index
             
-        # print(f"release block {block_index}")
+        # debug_print(f"release block {block_index}")
         self.data.bfree += 1
     
     def _fill_inode(self) -> None:
