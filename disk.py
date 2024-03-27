@@ -235,6 +235,9 @@ class Disk:
         
         # 只有硬连接数归零了才删除文件
         if inode.data.d_nlink == 0:
+            # 释放inode的所有数据块
+            for i in inode.block_list():
+                self.superblock.release_block(i)
             self.superblock.release_inode(inode.index)
             # 如果path是文件夹，那还要移除所有子文件
             if inode.file_type == FILE_TYPE.DIR:
