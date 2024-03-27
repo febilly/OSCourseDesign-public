@@ -4,6 +4,7 @@ from datetime import datetime
 import hashlib
 from structures import SuperBlockStruct
 from construct import Container
+from rich import print as rprint
 
 def timestamp() -> int:
     return int(time.time())
@@ -36,4 +37,4 @@ start_time = time.time()
 def debug_print(*args):
     if C.OUTPUT_LOG:
         text = " ".join(str(arg) for arg in args)
-        print(f"{time.time() - start_time:.2f} : {text}")
+        rprint(f"[yellow]{time.time() - start_time:.2f}[/yellow] : {text}")

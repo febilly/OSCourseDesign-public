@@ -2,4 +2,4 @@
 
 directory="/Users/$USER/Desktop/myfs"
 
-umount "$directory"
+diskutil unmount force "$directory"
