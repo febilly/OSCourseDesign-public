@@ -8,5 +8,5 @@ if [ ! -d "$directory" ]; then
     chown -R $USER:$USER "$directory"
 fi
 
-python3 ./mount.py "$img" "$directory" "$@"
+python3 ./mount.py mount "$img" "$directory" "$@"
 cd "$directory"

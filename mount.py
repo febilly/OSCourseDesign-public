@@ -19,7 +19,8 @@ import constants as C
 
 doc = """
 Usage:
-    mount.py <image_path> <mountpoint> [-h | --help | -d | --debug]
+    mount.py mount <image_path> <mountpoint> [-h | --help | -d | --debug]
+    mount.py format <image_path>
 
 Options:
     -h, --help     Show this screen.
@@ -167,5 +168,9 @@ def main(mountpoint, image_path, debug):
 if __name__ == '__main__':
     # main(sys.argv[2], sys.argv[1])
     args = docopt(doc)
-    main(args['<mountpoint>'], args['<image_path>'], args['--debug'])
-    
+    if args['mount']:
+        main(args['<mountpoint>'], args['<image_path>'], args['--debug'])
+    elif args['format']:
+        disk = Disk(args['<image_path>'])
+        disk.format()
+        

@@ -378,9 +378,12 @@ class Disk:
     
     def format(self):
         debug_print(f"Disk.format()")
-        self.unmount()
+        mounted = self.mounted
+        if mounted:
+            self.unmount()
         format_disk(self.path)
-        self.mount()
+        if mounted:
+            self.mount()
     
     @property
     def inode_size(self) -> int:
