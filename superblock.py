@@ -15,9 +15,13 @@ class Superblock(FreeBlockInterface):
         # 计算hash，并根据是否是新建磁盘来决定是写入hash，还是校验hash        
         if new:  # 对新磁盘，初始化额外信息
             self._fill_inode()
-            self.data.bfree = DiskParams.DATA_BLOCK_COUNT
             self.data.files = DiskParams.INODE_COUNT
             self.data.ffree = DiskParams.INODE_COUNT - 1
+            
+            self.data.bfree = 0
+            for i in range(DiskParams.DATA_START, DiskParams.DISK_BLOCKS):
+                self.release_block(i)
+                
             self.flush()
             return
             

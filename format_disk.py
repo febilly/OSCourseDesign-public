@@ -16,10 +16,6 @@ def format_disk(path: str, init_params: bool = False):
     disk = CachedBlockDevice(path)
     accessor = ObjectAccessor(disk)
     superblock = Superblock.new(accessor)
-    
-    for i in range(DiskParams.DATA_START, DiskParams.DISK_BLOCKS):
-        superblock.release_block(i)
-        
     root_inode = Inode.new(C.INODE_ROOT_NO, FILE_TYPE.DIR, accessor, superblock)
     
     superblock.flush()
