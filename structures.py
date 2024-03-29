@@ -74,7 +74,7 @@ assert FileBlockStruct.sizeof() == C.DATA_BLOCK_BYTES
 # 目录文件数据块
 DirectoryStruct = Struct(
     "m_ino" / Int32ul,
-    "m_name" / PaddedString(DIRECTORY_NAME_LENGTH + 1, "utf8"),
+    "m_name" / PaddedString(C.DIRECTORY_NAME_MAX_LENGTH + 1, "utf8"),
 )
 assert DirectoryStruct.sizeof() == 32
 
