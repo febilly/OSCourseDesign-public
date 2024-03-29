@@ -21,6 +21,7 @@ doc = """
 Usage:
     mount.py mount <image_path> <mountpoint> [-h | --help | -d | --debug]
     mount.py format <image_path>
+    mount.py new <image_path>
 
 Options:
     -h, --help     Show this screen.
@@ -173,4 +174,6 @@ if __name__ == '__main__':
     elif args['format']:
         disk = Disk(args['<image_path>'])
         disk.format()
+    elif args['new']:
+        disk = Disk.new(args['<image_path>'])
         
