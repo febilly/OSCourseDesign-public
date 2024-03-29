@@ -122,6 +122,9 @@ class CachedBlockDevice(BlockDevice):
             block = self.cache.get(block_number)
             block.modify_bytes(start, data)
         else:
+            if len(data) < C.BLOCK_BYTES:
+                block_data = super().read_block(block_number)
+                data = block_data[:start] + data + block_data[start + len(data):]
             block = CacheBlock(data, self._generate_writer(block_number), True)
             if popped_block := self.cache.put(block_number, block):
                 popped_block.flush()
