@@ -182,6 +182,7 @@ class Disk:
         
         parent.push_block(new_block_index)
         parent.size += C.DIRECTORY_BYTES
+        parent.update_mtime()
         parent.flush()
 
     def dir_list(self, path: str) -> list[str]:
@@ -195,6 +196,8 @@ class Disk:
             dir_block = DirBlock.from_index(index, self.object_accessor)
             result += dir_block.list()
         
+        inode.update_atime()
+        inode.flush()
         return result
     
     def exists(self, path: str) -> bool:
@@ -233,19 +236,21 @@ class Disk:
         
         # 只有硬连接数归零了才删除文件
         if inode.data.d_nlink == 0:
+            # 如果path是文件夹，移除所有子文件
+            if inode.file_type == FILE_TYPE.DIR:
+                for name in self.dir_list(path):
+                    self.unlink(os.path.join(path, name))
             # 释放inode的所有数据块
             for i in inode.block_list():
                 self.superblock.release_block(i)
             self.superblock.release_inode(inode.index)
-            # 如果path是文件夹，那还要移除所有子文件
-            if inode.file_type == FILE_TYPE.DIR:
-                for name in self.dir_list(path):
-                    self.unlink(os.path.join(path, name))
         else:
             inode.flush()
 
         parent_path, name = os.path.split(path)
         parent = self._get_inode(parent_path)
+        parent.update_mtime()
+        parent.flush()
         
         # 删除文件夹里对此文件的引用
         for index in parent.block_list():
@@ -297,6 +302,7 @@ class Disk:
             self.object_accessor.file_blocks[last_block_index] = block_data
                 
         inode.size = new_size
+        inode.update_mtime()
         inode.flush()
     
     def read_file(self, path: str, offset: int, size: int) -> bytes:
@@ -323,6 +329,8 @@ class Disk:
             if size == 0:
                 break
             
+        inode.update_atime()
+        inode.flush()
         return result
     
     def write_file(self, path: str, offset: int, data: bytes) -> None:
@@ -359,8 +367,9 @@ class Disk:
             block_index = self.superblock.allocate_block()
             self.object_accessor.file_blocks[block_index] = chunk
             inode.push_block(block_index)
-            
+        
         inode.size = max(inode.size, target_size)
+        inode.update_mtime()
         inode.flush()
 
     def modify_timestamp(self, path: str, atime: int = -1, mtime: int = -1) -> None:
@@ -371,10 +380,6 @@ class Disk:
         if mtime >= 0:
             inode.data.d_mtime = mtime
         inode.flush()
-    
-    def update_time(self, path: str) -> None:
-        debug_print(f"Disk.update_time({path})")
-        inode = self._get_inode(path)
     
     def format(self):
         debug_print(f"Disk.format()")
