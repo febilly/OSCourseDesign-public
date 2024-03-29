@@ -196,8 +196,6 @@ class Disk:
             dir_block = DirBlock.from_index(index, self.object_accessor)
             result += dir_block.list()
         
-        inode.update_atime()
-        inode.flush()
         return result
     
     def exists(self, path: str) -> bool:
@@ -304,7 +302,6 @@ class Disk:
             self.object_accessor.file_blocks[last_block_index] = block_data
                 
         inode.size = new_size
-        inode.update_mtime()
         inode.flush()
     
     def read_file(self, path: str, offset: int, size: int) -> bytes:
@@ -331,8 +328,6 @@ class Disk:
             if size == 0:
                 break
             
-        inode.update_atime()
-        inode.flush()
         return result
     
     def write_file(self, path: str, offset: int, data: bytes) -> None:
@@ -371,7 +366,6 @@ class Disk:
             inode.push_block(block_index)
         
         inode.size = max(inode.size, target_size)
-        inode.update_mtime()
         inode.flush()
 
     def modify_timestamp(self, path: str, atime: int = -1, mtime: int = -1) -> None:
