@@ -243,7 +243,7 @@ class Inode:
             
             # 是否应删除第二层索引块
             if index_3 == 0:
-                self._delete_data_block(self.data.d_addr[index_2])
+                self._delete_data_block(block_1[index_2])
                 block_1[index_2] = 0
                 
             # 是否应删除第一层索引块

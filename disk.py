@@ -242,7 +242,8 @@ class Disk:
                     self.unlink(os.path.join(path, name))
             # 释放inode的所有数据块
             for _ in range(inode.block_count):
-                inode.pop_block()
+                block = inode.pop_block()
+                self.superblock.release_block(block)
             self.superblock.release_inode(inode.index)
         else:
             inode.flush()
