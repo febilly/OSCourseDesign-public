@@ -6,7 +6,7 @@ import constants as C
 # 硬盘的参数（用于格式化硬盘）
 DISK_START = 0
 INODE_BLOCKS = 4096
-DISK_BLOCKS = 32768
+DISK_BLOCKS = 65536
 
 # 总字节数
 TOTAL_BYTES = DISK_BLOCKS * C.BLOCK_BYTES
@@ -23,7 +23,7 @@ DATA_START = INODE_START + INODE_BLOCKS
 DATA_BLOCK_COUNT = DISK_BLOCKS - DATA_START
 
 
-def init_constants(disk_start: int = 0, inode_blocks: int = 4096, disk_blocks: int = 32768) -> None:
+def init_constants(disk_start: int = 0, inode_blocks: int = 4096, disk_blocks: int = 65536) -> None:
     global DISK_START, INODE_BLOCKS, DISK_BLOCKS
     DISK_START = disk_start
     INODE_BLOCKS = inode_blocks
