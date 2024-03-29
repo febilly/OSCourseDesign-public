@@ -25,6 +25,8 @@ disk.mount()
 disk.create(DIR, FILE_TYPE.DIR)
 disk.create(FILE, FILE_TYPE.FILE)
 
+disk.create('/012345678901234567890123456789', FILE_TYPE.DIR)
+
 disk.create(D1, FILE_TYPE.DIR)
 assert(disk.exists(D1))
 disk.create(D1F1, FILE_TYPE.FILE)
