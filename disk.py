@@ -216,7 +216,8 @@ class Disk:
         parent_path, name = os.path.split(path)
         if name == '':
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
-        
+        elif len(name) > C.DIRECTORY_NAME_MAX_LENGTH:
+            raise FileNotFoundError(errno.ENAMETOOLONG, os.strerror(errno.ENAMETOOLONG), path)
         # 创建新的文件（夹）的inode
         inode_index = self.superblock.allocate_inode()
         inode = Inode.new(inode_index, type, self.object_accessor, self.superblock)
