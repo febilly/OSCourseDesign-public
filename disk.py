@@ -293,7 +293,7 @@ class Disk:
             self.superblock.release_block(block_index)
         
         # 进行块内的修剪
-        # 修建的是truncate之后留下的最后一个块
+        # 修剪的是truncate之后留下的最后一个块
         if new_size % C.BLOCK_BYTES != 0 and 0 < new_size < inode.size:
             last_block_position = new_size % C.BLOCK_BYTES
             last_block_index = inode.peek_block(target_blockcount - 1)

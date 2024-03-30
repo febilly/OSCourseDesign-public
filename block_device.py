@@ -7,7 +7,6 @@ class CacheBlock:
     """
     一个缓存块，记录了一个块的数据，以及一个写回函数（内含块的地址）
     同时会跟踪这个块是否被修改过
-    当写到块尾时，会进行写回，并重置dirty标志
     """
     def __init__(self, data: bytes, writer: Callable[[bytes], None], dirty):
         self.data = data
