@@ -2,3 +2,6 @@
 **temp.img
 **__pycache__
 /rich_examples
+/build
+/dist
+/*.spec
